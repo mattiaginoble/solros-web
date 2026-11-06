@@ -1,0 +1,85 @@
+// Schema del database del Configuratore Casa.
+// I progetti salvano l'intera casa come documento JSON validato lato server
+// (vedi src/domain/schema.ts), mentre il catalogo prodotti è normalizzato
+// per poter filtrare e cercare via SQL.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id        String    @id @default(cuid())
+  name      String    @default("Ospite")
+  createdAt DateTime  @default(now())
+  projects  Project[]
+  products  Product[]
+}
+
+model Project {
+  id         String   @id @default(cuid())
+  name       String
+  /// Documento House serializzato (JSON)
+  data       String
+  /// Token per il link di condivisione in sola lettura
+  shareToken String?  @unique
+  /// Case di esempio visibili a tutti, usate come modelli di partenza
+  isExample  Boolean  @default(false)
+  ownerId    String?
+  owner      User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([ownerId])
+}
+
+model Product {
+  id             String   @id
+  /// Sorgente del prodotto: demo | import | link | manual
+  source         String
+  retailer       String
+  /// Codice articolo del rivenditore, se disponibile
+  code           String?
+  name           String
+  category       String
+  subcategory    String?
+  /// Dimensioni in cm
+  width          Float
+  depth          Float
+  height         Float
+  price          Float
+  currency       String   @default("EUR")
+  color          String?
+  colorHex       String?
+  imageUrl       String?
+  url            String?
+  /// floor | wall | ceiling
+  mount          String   @default("floor")
+  /// Altezza da terra predefinita (cm) per oggetti a parete/soffitto
+  elevation      Float?
+  /// Ingombro di rispetto (cm): spazio frontale e laterale da lasciare libero
+  clearanceFront Float    @default(0)
+  clearanceSides Float    @default(0)
+  /// Modello glTF opzionale
+  modelUrl       String?
+  /// Forma parametrica usata quando manca il modello glTF
+  shape          String?
+  /// Metadati aggiuntivi (JSON), es. compatibilità moduli cucina
+  meta           String?
+  /// Nome del file/feed di provenienza per i prodotti importati
+  importBatch    String?
+  ownerId        String?
+  owner          User?    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  priceUpdatedAt DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([category])
+  @@index([retailer])
+  @@index([source])
+  @@index([ownerId])
+}

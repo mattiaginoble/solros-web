@@ -1,0 +1,101 @@
+@import "tailwindcss";
+
+/*
+ * Token del Configuratore Casa.
+ * Linguaggio del disegno tecnico: carta millimetrata fredda, grafite per muri e
+ * testi, blu di Prussia come unico accento (selezione, quote, azioni primarie).
+ */
+:root {
+  --paper: #f3f6f4;
+  --grid-minor: #dbe8e1;
+  --grid-major: #b4cfc2;
+  --graphite: #23272b;
+  --graphite-soft: #4a5258;
+  --muted: #66716c;
+  --line: #dde3e0;
+  --line-strong: #c7d0cc;
+  --panel: #ffffff;
+  --panel-sunk: #f7f9f8;
+  --prussian: #1d4f91;
+  --prussian-strong: #163d72;
+  --prussian-tint: #e3ebf6;
+  --warning: #9a5b00;
+  --warning-tint: #fdf1dc;
+  --danger: #b42318;
+  --danger-tint: #fde8e6;
+  --ok: #2f6b4f;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-graphite: var(--graphite);
+  --color-graphite-soft: var(--graphite-soft);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-panel: var(--panel);
+  --color-panel-sunk: var(--panel-sunk);
+  --color-prussian: var(--prussian);
+  --color-prussian-strong: var(--prussian-strong);
+  --color-prussian-tint: var(--prussian-tint);
+  --color-warning: var(--warning);
+  --color-warning-tint: var(--warning-tint);
+  --color-danger: var(--danger);
+  --color-danger-tint: var(--danger-tint);
+  --color-ok: var(--ok);
+  --color-grid-major: var(--grid-major);
+  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  --font-narrow: var(--font-archivo-narrow), var(--font-archivo), ui-sans-serif, sans-serif;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--paper);
+  color: var(--graphite);
+  font-family: var(--font-sans);
+  font-feature-settings: "tnum" 1;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--prussian);
+  outline-offset: 2px;
+}
+
+/* Carta millimetrata per superfici di disegno fuori dal canvas (home, anteprime). */
+.paper-grid {
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--grid-major) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-major) 1px, transparent 1px),
+    linear-gradient(var(--grid-minor) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-minor) 1px, transparent 1px);
+  background-size:
+    100px 100px,
+    100px 100px,
+    10px 10px,
+    10px 10px;
+  background-position: -1px -1px;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
