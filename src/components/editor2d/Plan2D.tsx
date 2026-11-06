@@ -9,7 +9,7 @@ import Konva from "konva";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Layer, Stage } from "react-konva";
 import { createRoom } from "@/domain/factory";
-import { addOpeningAtWorld, addRoom, fitToFloor, fitToRoom } from "@/store/actions";
+import { addOpeningAtWorld, addRoom, fitToFloor, fitToRoom, placeProductAtWorld } from "@/store/actions";
 import { activeFloor, useEditor } from "@/store/editor";
 import { useView2D } from "@/store/view2d";
 import { cleanPolygon, area, isSelfIntersecting, offsetPolygon } from "@/lib/geometry/polygon";
@@ -17,15 +17,16 @@ import { snapDrawPoint, snapValue } from "@/lib/geometry/snap";
 import { roomWorldPolygon } from "@/lib/geometry/transform";
 import { computeFloorWalls, openingGeometries } from "@/lib/geometry/walls";
 import { type Vec2, add, distance, mul, normalize, sub } from "@/lib/geometry/vec";
-import type { OpeningKind, Room } from "@/domain/schema";
+import { ProductSchema, type OpeningKind, type Room } from "@/domain/schema";
 import { GridLayer } from "./GridLayer";
-import { PlanRooms, RoomSelectionOutline, type RoomDragHandlers } from "./PlanRooms";
+import { PlanRoomLabels, PlanRooms, RoomSelectionOutline, type RoomDragHandlers } from "./PlanRooms";
 import { PlanWalls } from "./PlanWalls";
 import { OpeningDimensions, RoomDimensions } from "./PlanDimensions";
 import { PlanHandles } from "./PlanHandles";
 import { DrawOverlay, emptyDraw, type DrawState } from "./DrawOverlay";
 import { ZoomControls } from "./ZoomControls";
-import { OPENING_DND_TYPE } from "./dnd";
+import { OPENING_DND_TYPE, PRODUCT_DND_TYPE } from "./dnd";
+import { PlanItems } from "./PlanItems";
 
 Konva.hitOnDragEnabled = true;
 
@@ -279,18 +280,25 @@ export default function Plan2D() {
       className="relative h-full w-full touch-none select-none overflow-hidden"
       style={{ cursor: tool === "draw" ? "crosshair" : tool === "select" ? "default" : "copy" }}
       onDragOver={(e) => {
-        if (e.dataTransfer.types.includes(OPENING_DND_TYPE)) {
+        if (e.dataTransfer.types.includes(OPENING_DND_TYPE) || e.dataTransfer.types.includes(PRODUCT_DND_TYPE)) {
           e.preventDefault();
           e.dataTransfer.dropEffect = "copy";
         }
       }}
       onDrop={(e) => {
+        if (!stageRef.current) return;
         const kind = e.dataTransfer.getData(OPENING_DND_TYPE) as OpeningKind;
-        if (!kind || !stageRef.current) return;
+        const productJson = e.dataTransfer.getData(PRODUCT_DND_TYPE);
+        if (!kind && !productJson) return;
         e.preventDefault();
         stageRef.current.setPointersPositions(e.nativeEvent);
         const p = stageRef.current.getRelativePointerPosition();
-        if (p) addOpeningAtWorld(kind, p);
+        if (!p) return;
+        if (kind) addOpeningAtWorld(kind, p);
+        else {
+          const parsed = ProductSchema.safeParse(JSON.parse(productJson));
+          if (parsed.success) placeProductAtWorld(parsed.data, p);
+        }
       }}
     >
       {ready && (
@@ -356,6 +364,12 @@ export default function Plan2D() {
               drag={roomDrag}
               listening={interactiveRooms}
             />
+            <PlanItems
+              rooms={floor.rooms}
+              dimmedRoomIds={dimmed}
+              interactive={interactiveRooms}
+              focusedRoomId={mode === "room" ? focusedRoomId : null}
+            />
             <PlanWalls
               walls={walls}
               rooms={floor.rooms}
@@ -364,6 +378,7 @@ export default function Plan2D() {
               dimmedRoomIds={dimmed}
               listening={interactiveRooms}
             />
+            <PlanRoomLabels rooms={floor.rooms} dimmedRoomIds={dimmed} />
             {mode === "house" && selectedRoom && <RoomSelectionOutline room={selectedRoom} />}
             {view.showDimensions && mode === "room" && focusedRoom && <RoomDimensions room={focusedRoom} walls={walls} />}
             {view.showDimensions && mode === "house" && selectedRoom && <RoomDimensions room={selectedRoom} walls={walls} />}

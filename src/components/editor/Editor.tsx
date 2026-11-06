@@ -2,6 +2,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, type ReactNode } from "react";
 import { useEditor } from "@/store/editor";
+import { CatalogPanel } from "@/components/catalog/CatalogPanel";
 import { Dialogs } from "./Dialogs";
 import { PropertiesPanel } from "./PropertiesPanel";
 import { RightPanel } from "./RightPanel";
@@ -50,7 +51,7 @@ export function Editor({ initialAction, topRight }: EditorProps) {
           </main>
           <PropertiesPanel />
         </div>
-        <RightPanel />
+        <RightPanel extraTabs={[{ id: "catalog", label: "Catalogo", content: <CatalogPanel /> }]} />
       </div>
       <Dialogs />
       <Toast />

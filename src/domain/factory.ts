@@ -172,3 +172,22 @@ export function cloneHouseWithNewIds(house: House): House {
   return { ...structuredClone(house), id: uid("h"), floors };
 }
 
+
+/** Oggetto del catalogo posizionato in una stanza (copia del prodotto inclusa). */
+export function createPlacedItem(
+  product: import("./schema").Product,
+  x: number,
+  y: number,
+  rotation = 0,
+  elevation?: number,
+): import("./schema").PlacedItem {
+  return {
+    id: uid("i"),
+    product: structuredClone(product),
+    x,
+    y,
+    rotation,
+    elevation: elevation ?? (product.mount === "floor" ? 0 : (product.elevation ?? (product.mount === "wall" ? 120 : 0))),
+    quantity: 1,
+  };
+}

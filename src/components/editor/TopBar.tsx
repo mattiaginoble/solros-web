@@ -1,8 +1,9 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { formatTotals, quoteForHouse } from "@/lib/pricing/quote";
 import { IconButton, Segmented } from "@/components/ui/controls";
-import { IconCube, IconHelp, IconHome, IconPlan, IconRedo, IconUndo } from "@/components/ui/icons";
+import { IconCube, IconHelp, IconHome, IconPlan, IconReceipt, IconRedo, IconUndo } from "@/components/ui/icons";
 import { fitToFloor, fitToRoom } from "@/store/actions";
 import { useEditor } from "@/store/editor";
 import { saveNow } from "@/store/persistence";
@@ -75,6 +76,23 @@ function ProjectName() {
   );
 }
 
+function QuoteButton() {
+  const house = useEditor((s) => s.house);
+  const openDialog = useEditor((s) => s.openDialog);
+  const quote = useMemo(() => quoteForHouse(house), [house]);
+  return (
+    <button
+      type="button"
+      onClick={() => openDialog("quote")}
+      title="Apri il preventivo"
+      className="flex h-9 items-center gap-1.5 rounded-[5px] border border-line-strong px-2.5 text-sm hover:border-graphite-soft"
+    >
+      <IconReceipt size={17} />
+      <span className="font-semibold tabular-nums">{formatTotals(quote.totals, house.settings.currency)}</span>
+    </button>
+  );
+}
+
 export function TopBar({ rightSlot }: { rightSlot?: React.ReactNode }) {
   const mode = useEditor((s) => s.mode);
   const view = useEditor((s) => s.view);
@@ -136,6 +154,7 @@ export function TopBar({ rightSlot }: { rightSlot?: React.ReactNode }) {
           </>
         )}
         <SaveStatus />
+        <QuoteButton />
         {rightSlot}
         <IconButton label="Scorciatoie e aiuto" onClick={() => openDialog("help")}>
           <IconHelp size={18} />

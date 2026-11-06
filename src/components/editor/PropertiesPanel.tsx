@@ -1,10 +1,10 @@
 "use client";
 import { useMemo, type ReactNode } from "react";
 import { Button, NumberField, SelectField, TextField, formatNumber } from "@/components/ui/controls";
-import { IconCopy, IconRotate, IconTrash } from "@/components/ui/icons";
+import { IconCopy, IconRotate, IconTrash, IconWarning } from "@/components/ui/icons";
 import { OPENING_DEFAULTS, ROOM_COLOR_SWATCHES, ROOM_TYPES, ROOM_TYPE_COLOR, ROOM_TYPE_LABEL } from "@/domain/constants";
 import { FLOOR_MATERIALS, FLOOR_MATERIAL_BY_ID, WALL_MATERIALS, WALL_MATERIAL_BY_ID } from "@/domain/materials";
-import type { Opening, OpeningKind, Room, RoomType } from "@/domain/schema";
+import type { Opening, OpeningKind, PlacedItem, Room, RoomType } from "@/domain/schema";
 import {
   addOpening,
   roomStats,
@@ -16,7 +16,9 @@ import {
 import { edgeLength } from "@/lib/geometry/polygon";
 import { rotateRoomTransform } from "@/lib/geometry/transform";
 import { computeFloorWalls, listSharedWalls } from "@/lib/geometry/walls";
-import { deleteSelection, duplicateSelection, fitToRoom, rotateSelection } from "@/store/actions";
+import { deleteSelection, duplicateSelection, fitToRoom, rotateSelection, updateItem } from "@/store/actions";
+import { analyzeRoomItems, describeIssue } from "@/lib/geometry/placement";
+import { formatMoney, formatPriceDate, formatTotals, quoteForRoom } from "@/lib/pricing/quote";
 import { activeFloor, findRoom, useEditor } from "@/store/editor";
 
 function Section({ title, children, aside }: { title: string; children: ReactNode; aside?: ReactNode }) {
@@ -54,7 +56,10 @@ export function PropertiesPanel() {
     const o = loc.room.openings.find((x) => x.id === selection.openingId);
     body = o ? <OpeningProps room={loc.room} opening={o} /> : null;
   } else if (selection.kind === "vertex") body = <VertexProps room={loc.room} index={selection.index} />;
-  else body = null;
+  else if (selection.kind === "item") {
+    const it = loc.room.items.find((x) => x.id === selection.itemId);
+    body = it ? <ItemProps room={loc.room} item={it} /> : null;
+  } else body = null;
 
   return (
     <div
@@ -216,6 +221,8 @@ function RoomProps({ room }: { room: Room }) {
           />
         ))}
       </Section>
+
+      <RoomFurniture room={room} />
 
       <Section title="Azioni">
         {mode === "house" ? (
@@ -413,6 +420,87 @@ function VertexProps({ room, index }: { room: Room; index: number }) {
       <p className="max-w-xs self-center text-sm text-muted">
         Trascina il vertice per spostarlo (Alt per muoverlo senza snap). Doppio clic su un muro per aggiungere un vertice.
       </p>
+    </div>
+  );
+}
+
+function RoomFurniture({ room }: { room: Room }) {
+  if (room.items.length === 0) return null;
+  const q = quoteForRoom(room);
+  return (
+    <Section title="Arredi">
+      <ReadValue label="Oggetti" value={String(room.items.reduce((a, i) => a + (i.quantity ?? 1), 0))} />
+      <ReadValue label="Totale indicativo" value={formatTotals(q.totals)} />
+    </Section>
+  );
+}
+
+function ItemProps({ room, item }: { room: Room; item: PlacedItem }) {
+  const p = item.product;
+  const issues = analyzeRoomItems(room).get(item.id) ?? [];
+  const up = (patch: Partial<PlacedItem>) => updateItem(room.id, item.id, patch);
+  const upProduct = (patch: Partial<PlacedItem["product"]>) => up({ product: { ...p, ...patch } });
+  return (
+    <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
+      <Section title={p.name} aside={p.source === "demo" ? <span className="rounded border border-line-strong px-1 text-[10px] text-muted">dati demo</span> : undefined}>
+        <ReadValue label="Rivenditore" value={p.retailer} />
+        <NumberField label="Larghezza" value={p.width} min={1} max={2000} onChange={(v) => upProduct({ width: v })} width="w-16" />
+        <NumberField label="Profondità" value={p.depth} min={1} max={2000} onChange={(v) => upProduct({ depth: v })} width="w-16" />
+        <NumberField label="Altezza" value={p.height} min={1} max={1000} onChange={(v) => upProduct({ height: v })} width="w-16" />
+      </Section>
+      <Section title="Posizione">
+        <NumberField label="X (nella stanza)" value={item.x} onChange={(x) => up({ x })} width="w-16" />
+        <NumberField label="Y (nella stanza)" value={item.y} onChange={(y) => up({ y })} width="w-16" />
+        <NumberField label="Rotazione" unit="°" value={item.rotation} min={-360} max={360} onChange={(v) => up({ rotation: ((v % 360) + 360) % 360 })} width="w-14" />
+        {p.mount !== "ceiling" && (
+          <NumberField
+            label={p.mount === "wall" ? "Altezza da terra" : "Sollevato da terra"}
+            value={item.elevation}
+            min={0}
+            max={Math.max(0, room.ceilingHeight - p.height)}
+            onChange={(v) => up({ elevation: v })}
+            width="w-16"
+          />
+        )}
+      </Section>
+      <Section title="Prezzo">
+        <NumberField label="Quantità" unit="pz" value={item.quantity ?? 1} min={1} max={999} decimals={0} onChange={(v) => up({ quantity: Math.round(v) })} width="w-12" />
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-muted">Prezzo indicativo</span>
+          <span className="flex h-9 items-center gap-2 text-sm">
+            <strong className="tabular-nums">{formatMoney(p.price * (item.quantity ?? 1), p.currency)}</strong>
+            <span className="text-xs text-muted">al {formatPriceDate(p.priceUpdatedAt)}, può essere cambiato</span>
+          </span>
+        </div>
+      </Section>
+      {issues.length > 0 && (
+        <Section title="Da controllare">
+          <ul className="flex flex-col gap-1 text-sm text-danger">
+            {issues.map((iss, i) => (
+              <li key={i} className="flex items-center gap-1.5">
+                <IconWarning size={16} />
+                {describeIssue(iss)}
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+      <Section title="Azioni">
+        <Button icon={<IconRotate size={16} />} onClick={() => rotateSelection(90)} title="Ruota di 90° (R), Alt+R per 15°">
+          Ruota
+        </Button>
+        <Button icon={<IconCopy size={16} />} onClick={duplicateSelection}>
+          Duplica
+        </Button>
+        {p.url && (
+          <a href={p.url} target="_blank" rel="noopener noreferrer" className="inline-flex h-10 items-center rounded-[5px] border border-line-strong px-3.5 text-sm font-medium hover:border-graphite-soft">
+            Apri il prodotto
+          </a>
+        )}
+        <Button variant="danger" icon={<IconTrash size={16} />} onClick={deleteSelection}>
+          Elimina
+        </Button>
+      </Section>
     </div>
   );
 }

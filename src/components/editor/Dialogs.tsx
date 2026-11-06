@@ -6,6 +6,7 @@ import { createRectRoom } from "@/domain/factory";
 import type { RoomType } from "@/domain/schema";
 import { addRoom, fitToFloor } from "@/store/actions";
 import { useEditor } from "@/store/editor";
+import { QuoteDialog } from "@/components/quote/QuoteDialog";
 import { TemplatesList } from "./RightPanel";
 
 function RectRoomDialog({ onClose }: { onClose: () => void }) {
@@ -127,5 +128,6 @@ export function Dialogs() {
   if (dialog === "rect") return <RectRoomDialog onClose={close} />;
   if (dialog === "templates") return <TemplatesDialog onClose={close} />;
   if (dialog === "help") return <HelpDialog onClose={close} />;
+  if (dialog === "quote") return <QuoteDialog onClose={close} />;
   return null;
 }

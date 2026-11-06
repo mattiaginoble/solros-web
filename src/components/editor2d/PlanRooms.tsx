@@ -34,18 +34,11 @@ export function PlanRooms({
   const select = useEditor((s) => s.select);
   const focusRoom = useEditor((s) => s.focusRoom);
   const mode = useEditor((s) => s.mode);
-  const scale = useView2D((s) => s.scale);
-  const fonts = planFonts();
-
   return (
     <Group listening={listening}>
       {rooms.map((room) => {
         const selected = selection?.roomId === room.id && selection.kind === "room";
         const dim = dimmedRoomIds.has(room.id);
-        const c = centroid(room.polygon);
-        const nameSize = 13 / scale;
-        const areaSize = 11.5 / scale;
-        const labelW = 220 / scale;
         const onPick = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
           e.cancelBubble = true;
           select({ kind: "room", roomId: room.id });
@@ -92,7 +85,27 @@ export function PlanRooms({
           >
             <Line points={flat(room.polygon)} closed fill={room.color} />
             {selected && <Line points={flat(room.polygon)} closed fill={PLAN.accentTint} listening={false} />}
-            <Group x={c.x} y={c.y} rotation={-room.rotation} listening={false}>
+          </Group>
+        );
+      })}
+    </Group>
+  );
+}
+
+/** Nome e superficie delle stanze, disegnati sopra arredi e muri. */
+export function PlanRoomLabels({ rooms, dimmedRoomIds }: { rooms: Room[]; dimmedRoomIds: Set<string> }) {
+  const scale = useView2D((s) => s.scale);
+  const fonts = planFonts();
+  return (
+    <Group listening={false}>
+      {rooms.map((room) => {
+        const c = centroid(room.polygon);
+        const nameSize = 13 / scale;
+        const areaSize = 11.5 / scale;
+        const labelW = 220 / scale;
+        return (
+          <Group key={room.id} x={room.x} y={room.y} rotation={room.rotation} opacity={dimmedRoomIds.has(room.id) ? 0.35 : 1}>
+            <Group x={c.x} y={c.y} rotation={-room.rotation}>
               <Text
                 text={room.name}
                 fontFamily={fonts.regular}
@@ -105,6 +118,9 @@ export function PlanRooms({
                 align="center"
                 wrap="none"
                 ellipsis
+                stroke={PLAN.white}
+                strokeWidth={3 / scale}
+                fillAfterStrokeEnabled
               />
               <Text
                 text={formatM2(areaM2(room.polygon))}
@@ -115,6 +131,9 @@ export function PlanRooms({
                 offsetX={labelW / 2}
                 offsetY={-areaSize * 0.25}
                 align="center"
+                stroke={PLAN.white}
+                strokeWidth={3 / scale}
+                fillAfterStrokeEnabled
               />
             </Group>
           </Group>

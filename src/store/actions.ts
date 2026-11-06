@@ -1,10 +1,11 @@
 /** Azioni di alto livello dell'editor, condivise da barra strumenti, scorciatoie e pannelli. */
 import { OPENING_DEFAULTS } from "@/domain/constants";
-import { cloneRoomWithNewIds, uid } from "@/domain/factory";
-import type { OpeningKind, Room } from "@/domain/schema";
+import { cloneRoomWithNewIds, createPlacedItem, uid } from "@/domain/factory";
+import type { OpeningKind, PlacedItem, Product, Room } from "@/domain/schema";
 import { addOpening, nearestWallInRooms, removeVertex } from "@/domain/roomOps";
-import { bbox, bboxUnion, edgeLength } from "@/lib/geometry/polygon";
-import { dirToLocal, roomWorldPolygon, rotateRoomTransform } from "@/lib/geometry/transform";
+import { bbox, bboxUnion, centroid, edgeLength, pointInPolygon } from "@/lib/geometry/polygon";
+import { doesNotFit, findFreeSpot, placeNearWall } from "@/lib/geometry/placement";
+import { dirToLocal, localToWorld, roomWorldPolygon, rotateRoomTransform, worldToLocal } from "@/lib/geometry/transform";
 import type { Vec2 } from "@/lib/geometry/vec";
 import { activeFloor, findRoom, useEditor } from "./editor";
 import { useView2D, viewCenterWorld } from "./view2d";
@@ -191,4 +192,106 @@ export function addOpeningAtWorld(kind: OpeningKind, world: Vec2, opts: { roomId
   s.updateRoom(hit.roomId, () => res.room);
   s.select({ kind: "opening", roomId: hit.roomId, openingId: res.opening.id });
   return res.opening;
+}
+
+// ---------------------------------------------------------------------------
+// Oggetti d'arredo
+
+/** Stanza del piano attivo che contiene il punto (coordinate di piano). */
+export function roomAtWorld(world: Vec2): Room | null {
+  const floor = activeFloor(st());
+  for (let i = floor.rooms.length - 1; i >= 0; i--) {
+    const r = floor.rooms[i];
+    if (pointInPolygon(world, roomWorldPolygon(r))) return r;
+  }
+  return null;
+}
+
+/**
+ * Inserisce un prodotto nel punto del piano indicato: lo assegna alla stanza
+ * che contiene il punto, lo appoggia al muro più vicino e segnala se non entra.
+ */
+export function placeProductAtWorld(product: Product, world: Vec2) {
+  const s = st();
+  if (s.readOnly) return null;
+  const room = s.mode === "room" && s.focusedRoomId ? findRoom(s.house, s.focusedRoomId)?.room ?? null : roomAtWorld(world);
+  if (!room) {
+    s.notify("Rilascia l’oggetto dentro una stanza", "warning");
+    return null;
+  }
+  const local = worldToLocal(room, world);
+  const draft = createPlacedItem(product, local.x, local.y);
+  const placed = product.mount === "ceiling" ? { x: local.x, y: local.y, rotation: 0 } : placeNearWall(room, draft, local);
+  const item = { ...draft, ...placed };
+  s.updateRoom(room.id, (r) => ({ ...r, items: [...r.items, item] }));
+  s.select({ kind: "item", roomId: room.id, itemId: item.id });
+  if (doesNotFit(room, product.width, product.depth)) {
+    s.notify(`${product.name} non entra in ${room.name}: è più grande della stanza`, "warning");
+  }
+  return item;
+}
+
+/** Inserisce un prodotto nella stanza selezionata (o al centro della vista), in un punto libero. */
+export function addProduct(product: Product) {
+  const s = st();
+  const sel = s.selection;
+  const roomId = s.focusedRoomId ?? (sel ? sel.roomId : null);
+  const loc = roomId ? findRoom(s.house, roomId) : null;
+  if (loc) {
+    const draft = createPlacedItem(product, 0, 0);
+    const spot = findFreeSpot(loc.room, draft);
+    if (spot) {
+      const item = { ...draft, ...spot };
+      s.updateRoom(loc.room.id, (r) => ({ ...r, items: [...r.items, item] }));
+      s.select({ kind: "item", roomId: loc.room.id, itemId: item.id });
+      return item;
+    }
+    const c = localToWorld(loc.room, centroid(loc.room.polygon));
+    const placed = placeProductAtWorld(product, c);
+    if (placed && !doesNotFit(loc.room, product.width, product.depth))
+      s.notify(`In ${loc.room.name} non c’è uno spazio libero: l’oggetto è stato messo al centro`, "warning");
+    return placed;
+  }
+  const center = viewCenterWorld();
+  if (roomAtWorld(center)) return placeProductAtWorld(product, center);
+  const first = activeFloor(s).rooms[0];
+  if (!first) {
+    s.notify("Crea prima una stanza in cui inserire l’oggetto", "warning");
+    return null;
+  }
+  return placeProductAtWorld(product, localToWorld(first, centroid(first.polygon)));
+}
+
+export function updateItem(roomId: string, itemId: string, patch: Partial<PlacedItem>) {
+  st().updateRoom(roomId, (r) => ({ ...r, items: r.items.map((i) => (i.id === itemId ? { ...i, ...patch } : i)) }));
+}
+
+/**
+ * Se il centro dell'oggetto è finito in un'altra stanza dello stesso piano,
+ * lo sposta in quella stanza mantenendo posizione e orientamento nel piano.
+ */
+export function reparentItemIfMoved(roomId: string, itemId: string) {
+  const s = st();
+  const loc = findRoom(s.house, roomId);
+  const item = loc?.room.items.find((i) => i.id === itemId);
+  if (!loc || !item) return;
+  const world = localToWorld(loc.room, { x: item.x, y: item.y });
+  if (pointInPolygon(world, roomWorldPolygon(loc.room))) return;
+  const target = loc.floor.rooms.find((r) => r.id !== roomId && pointInPolygon(world, roomWorldPolygon(r)));
+  if (!target) return;
+  const local = worldToLocal(target, world);
+  const moved = {
+    ...item,
+    x: Math.round(local.x * 10) / 10,
+    y: Math.round(local.y * 10) / 10,
+    rotation: (((item.rotation + loc.room.rotation - target.rotation) % 360) + 360) % 360,
+  };
+  s.apply((h) => {
+    const f = h.floors[loc.floorIndex];
+    const from = f.rooms.find((r) => r.id === roomId)!;
+    const to = f.rooms.find((r) => r.id === target.id)!;
+    from.items = from.items.filter((i) => i.id !== itemId);
+    to.items.push(moved);
+  });
+  s.select({ kind: "item", roomId: target.id, itemId });
 }

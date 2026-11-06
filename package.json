@@ -12,9 +12,10 @@
     "test:watch": "vitest",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
     "db:reset": "prisma migrate reset --force",
     "postinstall": "prisma generate",
-    "setup": "prisma migrate deploy"
+    "setup": "prisma migrate deploy && prisma db seed"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.10.1",

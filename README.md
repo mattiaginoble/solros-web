@@ -11,7 +11,7 @@ Requisiti: Node.js 20 o superiore.
 ```bash
 npm install            # installa le dipendenze e genera il client Prisma
 cp .env.example .env   # configurazione locale (database SQLite)
-npm run setup          # crea il database
+npm run setup          # crea il database e carica catalogo demo e case di esempio
 npm run dev            # http://localhost:3000
 ```
 
@@ -24,7 +24,8 @@ Comandi utili:
 | `npm run typecheck` | controllo dei tipi TypeScript |
 | `npm run lint` | ESLint |
 | `npm run db:migrate` | applica/crea migrazioni durante lo sviluppo |
-| `npm run db:reset` | ricrea il database da zero |
+| `npm run db:seed` | carica catalogo demo (85 prodotti) e 3 case di esempio |
+| `npm run db:reset` | ricrea il database da zero (e riesegue il seed) |
 
 ## Architettura
 
@@ -79,3 +80,60 @@ tests/               test Vitest
   poi regola larghezza, altezza, altezza da terra, cerniera e verso.
 - Scorciatoie: `Canc`, `Ctrl+Z`, `Ctrl+Maiusc+Z`, `R`, `Ctrl+D`, frecce, `Esc`
   (elenco completo dal pulsante "?" nell'editor).
+
+## Catalogo prodotti
+
+Il catalogo è costruito attorno all'interfaccia `CatalogProvider`
+(`src/catalog/types.ts`): ogni sorgente restituisce i propri prodotti, mentre
+ricerca testuale, filtri (rivenditore, categoria, prezzo, dimensioni, colore) e
+faccette sono applicati in modo uniforme da `src/catalog/filter.ts`.
+
+| Provider | Sorgente |
+| --- | --- |
+| `DemoProvider` | ~80 prodotti generici con prezzi indicativi, marcati "dati demo" |
+| `FileImportProvider` | cataloghi e feed importati da CSV/JSON |
+| `ProductLinkProvider` | prodotti precompilati dal link di una pagina prodotto |
+| `ManualProvider` | prodotti personalizzati inseriti a mano |
+
+I prezzi sono sempre mostrati con la data di aggiornamento e l'avviso che
+possono essere cambiati. I rivenditori del catalogo demo sono fittizi.
+
+### Aggiungere un nuovo CatalogProvider
+
+1. Crea un file in `src/catalog/providers/`, ad esempio `mioFeed.ts`:
+
+   ```ts
+   import "server-only";
+   import type { CatalogProvider } from "../types";
+
+   export const MioFeedProvider: CatalogProvider = {
+     id: "import",               // una delle sorgenti di ProductSource
+     label: "Feed Mio Negozio",
+     description: "Prodotti dal feed affiliato di Mio Negozio",
+     async list(ctx) {
+       // restituisci Product[] (vedi ProductSchema in src/domain/schema.ts)
+       return [];
+     },
+   };
+   ```
+
+2. Registralo in `CATALOG_PROVIDERS` in `src/catalog/service.ts`.
+
+Ogni prodotto ha: id, rivenditore, nome, categoria e sottocategoria,
+larghezza/profondità/altezza in cm, prezzo e valuta, colore, immagine, URL,
+tipo di montaggio (pavimento, parete, soffitto), ingombro di rispetto
+(spazio frontale e laterale) e modello glTF opzionale. Senza glTF il 3D usa
+una forma parametrica (`shape`).
+
+## Arredi in pianta
+
+- Trascina un prodotto dal catalogo sulla pianta, oppure usa **+** per
+  inserirlo nella stanza selezionata in un punto libero.
+- Durante il trascinamento l'oggetto si aggancia alle pareti (anche in
+  angolo), al centro della stanza e ai bordi degli altri oggetti; tieni
+  premuto Alt per muoverlo liberamente.
+- La maniglia davanti all'oggetto lo ruota a passi di 15°; `R` ruota di 90°.
+- Collisioni, oggetti fuori stanza, porte bloccate e ingombri di apertura
+  occupati sono evidenziati in rosso e spiegati nel pannello proprietà.
+- Gli oggetti a parete (pensili, specchi, applique) hanno l'altezza da terra
+  regolabile e non collidono con i mobili a terra sottostanti.
