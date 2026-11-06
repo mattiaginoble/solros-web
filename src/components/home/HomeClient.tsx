@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Button, Modal } from "@/components/ui/controls";
 import { PlanPreview } from "@/components/ui/PlanPreview";
-import { createHouse } from "@/domain/factory";
+import { cloneHouseWithNewIds, createHouse } from "@/domain/factory";
+import { safeParseHouse } from "@/domain/schema";
 import { ROOM_TEMPLATES } from "@/domain/templates";
 import { api, type ProjectSummary } from "@/lib/client/api";
 
@@ -218,7 +219,34 @@ export function HomeClient() {
         )}
 
         <section className="mt-14">
-          <h2 className="text-xl font-semibold">I tuoi progetti</h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold">I tuoi progetti</h2>
+            <label className="inline-flex h-9 cursor-pointer items-center rounded-[5px] border border-line-strong bg-panel px-3 text-sm font-medium hover:border-graphite-soft">
+              Importa progetto (JSON)
+              <input
+                type="file"
+                accept=".json,application/json"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (!file) return;
+                  try {
+                    const raw = JSON.parse(await file.text());
+                    const candidate = raw && raw.format === "configuratore-casa" ? raw.house : raw;
+                    const parsed = safeParseHouse(candidate);
+                    if (!parsed.success) throw new Error("invalid");
+                    setBusy(true);
+                    const { project } = await api.createProject({ data: cloneHouseWithNewIds(parsed.data) });
+                    router.push(`/editor/${project.id}`);
+                  } catch {
+                    setBusy(false);
+                    setError("Il file non è un progetto valido del Configuratore Casa.");
+                  }
+                }}
+              />
+            </label>
+          </div>
           {!data ? (
             <p className="mt-3 text-sm text-muted">Caricamento…</p>
           ) : data.projects.length === 0 ? (

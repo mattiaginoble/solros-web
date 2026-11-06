@@ -9,6 +9,7 @@ import { searchCatalog, type CatalogSearchResponse } from "@/lib/client/api";
 import { formatMoney, formatPriceDate } from "@/lib/pricing/quote";
 import { addProduct } from "@/store/actions";
 import { useEditor } from "@/store/editor";
+import { useCatalogVersion } from "./catalogVersion";
 
 const SOURCE_LABEL: Record<string, string> = {
   demo: "Dati demo",
@@ -82,6 +83,8 @@ export function CatalogPanel() {
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const readOnly = useEditor((s) => s.readOnly);
+  const openDialog = useEditor((s) => s.openDialog);
+  const version = useCatalogVersion((s) => s.version);
   const debounced = useDebounced(filters, 220);
 
   useEffect(() => {
@@ -112,7 +115,7 @@ export function CatalogPanel() {
         if ((e as Error).name !== "AbortError") setError("Catalogo non disponibile. Riprova tra poco.");
       });
     return () => ctrl.abort();
-  }, [debounced]);
+  }, [debounced, version]);
 
   const set = (patch: Partial<Filters>) => setFilters((f) => ({ ...f, ...patch }));
   const activeCount =
@@ -141,6 +144,16 @@ export function CatalogPanel() {
           />
         </label>
         <div className="flex gap-2">
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={() => openDialog("catalog-add")}
+              title="Aggiungi prodotti da link, file CSV/JSON o a mano"
+              className="h-8 shrink-0 rounded-[5px] border border-prussian bg-prussian px-2.5 text-[13px] font-medium text-white hover:bg-prussian-strong"
+            >
+              + Aggiungi
+            </button>
+          )}
           <select
             aria-label="Categoria"
             value={filters.category}
@@ -391,7 +404,22 @@ function CatalogRow({ product: p, expanded, onToggle, disabled }: { product: Pro
               </dd>
             </>
           )}
-          <dd className="col-span-2 mt-1 text-[11px] text-muted">Trascina il prodotto sulla pianta oppure usa +.</dd>
+          <dd className="col-span-2 mt-1 flex items-center justify-between text-[11px] text-muted">
+            <span>Trascina il prodotto sulla pianta oppure usa +.</span>
+            {p.source !== "demo" && !disabled && (
+              <button
+                type="button"
+                className="font-medium text-danger underline"
+                onClick={async () => {
+                  if (!confirm(`Eliminare «${p.name}» dal catalogo? Gli oggetti già posizionati restano nel progetto.`)) return;
+                  const res = await fetch(`/api/catalog/products/${encodeURIComponent(p.id)}`, { method: "DELETE" });
+                  if (res.ok) useCatalogVersion.getState().bump();
+                }}
+              >
+                Elimina dal catalogo
+              </button>
+            )}
+          </dd>
         </dl>
       )}
     </li>

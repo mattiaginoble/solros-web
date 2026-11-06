@@ -30,6 +30,7 @@ export type DialogKind =
   | "templates"
   | "import"
   | "import-next"
+  | "catalog-add"
   | "quote"
   | "kitchen"
   | "project"

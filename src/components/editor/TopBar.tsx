@@ -8,6 +8,7 @@ import { fitToFloor, fitToRoom } from "@/store/actions";
 import { useEditor } from "@/store/editor";
 import { saveNow } from "@/store/persistence";
 import { FloorSelector } from "./FloorSelector";
+import { ProjectMenu } from "./ProjectMenu";
 
 function SaveStatus() {
   const status = useEditor((s) => s.saveStatus);
@@ -157,6 +158,7 @@ export function TopBar({ rightSlot }: { rightSlot?: React.ReactNode }) {
         )}
         <SaveStatus />
         <QuoteButton />
+        <ProjectMenu />
         {rightSlot}
         <IconButton label="Scorciatoie e aiuto" onClick={() => openDialog("help")}>
           <IconHelp size={18} />

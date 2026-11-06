@@ -122,6 +122,20 @@ Applicando la configurazione i moduli diventano oggetti della stanza (visibili
 in pianta e in 3D) e entrano nel preventivo insieme alle finiture (sovrapprezzo
 dei frontali, maniglie, zoccolo).
 
+## Preventivo, condivisione ed export
+
+- **Preventivo** (totale in alto a destra): righe aggregate con quantità,
+  raggruppate per stanza o per rivenditore, oppure come lista della spesa;
+  prezzi sempre con data di aggiornamento e avviso.
+- **Esporta PDF** e **Esporta CSV** (nome, codice, rivenditore, link,
+  quantità, prezzo unitario e totale, stanze); il CSV usa `;` e la virgola
+  decimale per aprirsi correttamente in Excel in italiano.
+- **Apri i link dei prodotti**: apre le pagine dei prodotti in nuove schede
+  (il browser potrebbe chiedere di consentire i popup).
+- Menu **Progetto**: link di condivisione in sola lettura (revocabile),
+  esportazione del progetto in JSON, duplicazione. Dalla home si importa un
+  progetto JSON esportato in precedenza.
+
 ## Vista 3D
 
 Il pulsante **3D** in alto passa alla vista tridimensionale (stesso progetto,
@@ -190,6 +204,37 @@ faccette sono applicati in modo uniforme da `src/catalog/filter.ts`.
 
 I prezzi sono sempre mostrati con la data di aggiornamento e l'avviso che
 possono essere cambiati. I rivenditori del catalogo demo sono fittizi.
+
+### Importare un catalogo da CSV o JSON
+
+Dal pannello Catalogo: **+ Aggiungi → Da file CSV o JSON**.
+
+1. Scegli il file: CSV con intestazione (separatore `,` o `;`) oppure JSON
+   (un elenco di prodotti, anche dentro `products`/`items`; i campi annidati
+   come `offers.price` diventano colonne).
+2. Le colonne vengono riconosciute dal nome (italiano o inglese: *nome/name*,
+   *prezzo/price*, *larghezza/width*, *sku/codice*…) e si possono correggere.
+   In alternativa alle tre misure basta una colonna *dimensioni* come
+   `200x90x85 cm`.
+3. Indica l'unità delle misure (cm, mm, m) e il rivenditore predefinito, poi
+   controlla l'anteprima: le righe scartate sono elencate con il motivo.
+4. *Importa*: i prodotti finiscono nel catalogo personale, raggruppati per
+   lotto (reimportare lo stesso file aggiorna i prodotti, un lotto si può
+   eliminare in blocco).
+
+Il file [`docs/esempio-catalogo.csv`](docs/esempio-catalogo.csv) è un esempio
+pronto. Prezzi e numeri accettano il formato italiano (`1.149,00`).
+
+### Prodotto da link e prodotto manuale
+
+**+ Aggiungi → Da link**: incolli l'indirizzo della pagina di un prodotto
+(qualsiasi rivenditore) e l'app legge, con una sola richiesta e solo su tua
+azione, i metadati pubblici della pagina (JSON-LD schema.org, Open Graph) per
+precompilare nome, prezzo, immagine e misure, che confermi o correggi prima di
+salvare. Nessuno scraping massivo: viene rispettato il `robots.txt` del sito,
+c'è un intervallo minimo tra richieste allo stesso dominio, e il server rifiuta
+indirizzi privati o locali (protezione SSRF). Se un sito non lo consente, il
+prodotto si inserisce a mano (**Inserimento manuale**).
 
 ### Aggiungere un nuovo CatalogProvider
 

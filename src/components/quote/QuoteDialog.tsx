@@ -1,6 +1,8 @@
 "use client";
 import { useMemo, useState } from "react";
-import { Modal, Segmented } from "@/components/ui/controls";
+import { Button, Modal, Segmented } from "@/components/ui/controls";
+import { quoteToCsv } from "@/lib/pricing/exportCsv";
+import { downloadText, quoteToPdf, slug } from "@/lib/pricing/exportPdf";
 import { formatMoney, formatPriceDate, formatTotals, quoteForHouse, type QuoteLine } from "@/lib/pricing/quote";
 import { useEditor } from "@/store/editor";
 
@@ -21,7 +23,13 @@ function LinesTable({ lines, showRooms }: { lines: QuoteLine[]; showRooms?: bool
         {lines.map((l) => (
           <tr key={l.key} className="border-b border-line/70 align-top">
             <td className="py-1.5 pr-2">
-              <span className="block">{l.name}</span>
+              {l.url ? (
+                <a href={l.url} target="_blank" rel="noopener noreferrer" className="block text-prussian underline-offset-2 hover:underline">
+                  {l.name}
+                </a>
+              ) : (
+                <span className="block">{l.name}</span>
+              )}
               <span className="block text-xs text-muted">
                 {l.retailer}
                 {l.code ? `, cod. ${l.code}` : ""}
@@ -42,9 +50,53 @@ export function QuoteDialog({ onClose }: { onClose: () => void }) {
   const house = useEditor((s) => s.house);
   const quote = useMemo(() => quoteForHouse(house), [house]);
   const [view, setView] = useState<View>("rooms");
+  const [busy, setBusy] = useState(false);
+  const links = Array.from(new Map(quote.lines.filter((l) => l.url).map((l) => [l.url!, l])).values());
+
+  const openAll = () => {
+    let blocked = 0;
+    for (const l of links) {
+      const w = window.open(l.url, "_blank", "noopener,noreferrer");
+      if (!w) blocked++;
+    }
+    if (blocked) useEditor.getState().notify(`Il browser ha bloccato ${blocked} schede: consenti i popup per questo sito o usa i link nell'elenco`, "warning");
+  };
 
   return (
-    <Modal title={`Preventivo di ${house.name}`} onClose={onClose} width="max-w-3xl">
+    <Modal
+      title={`Preventivo di ${house.name}`}
+      onClose={onClose}
+      width="max-w-3xl"
+      footer={
+        <>
+          <Button
+            className="mr-auto"
+            disabled={!links.length}
+            onClick={openAll}
+            title={links.length ? `Apre ${links.length} pagine prodotto in nuove schede` : "Nessun prodotto ha un link"}
+          >
+            Apri i link dei prodotti ({links.length})
+          </Button>
+          <Button disabled={!quote.lines.length} onClick={() => downloadText(quoteToCsv(quote, house.name), `preventivo-${slug(house.name)}.csv`, "text/csv;charset=utf-8")}>
+            Esporta CSV
+          </Button>
+          <Button
+            variant="primary"
+            disabled={!quote.lines.length || busy}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                await quoteToPdf(quote, house.name, { groupBy: view === "retailers" ? "retailers" : "rooms", multiFloor: house.floors.length > 1 });
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            {busy ? "Creazione PDF…" : "Esporta PDF"}
+          </Button>
+        </>
+      }
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Segmented<View>
           label="Raggruppamento"

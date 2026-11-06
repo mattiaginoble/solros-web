@@ -1,0 +1,6 @@
+Nome;Rivenditore;SKU;Categoria;Larghezza;Profondità;Altezza;Prezzo;Colore;Montaggio;Link;Immagine
+Divano 3 posti Aria;Negozio Esempio;AR-300;Soggiorno;214;94;86;"899,00";Grigio perla;pavimento;https://negozio.example.com/divani/aria;
+Poltrona Brezza;Negozio Esempio;BR-100;Soggiorno;78;82;92;"349,00";Senape;pavimento;https://negozio.example.com/poltrone/brezza;
+Letto contenitore Notte 160;Negozio Esempio;NT-160;Camera;170;212;98;"1.149,00";Tortora;pavimento;https://negozio.example.com/letti/notte-160;
+Pensile Linea 60;Negozio Esempio;LN-P60;Cucina;60;35;72;"119,00";Bianco;parete;https://negozio.example.com/cucine/linea-pensile-60;
+Lampadario Goccia;Negozio Esempio;GC-45;Illuminazione;45;45;40;"139,00";Ottone;soffitto;https://negozio.example.com/luci/goccia;
