@@ -1,7 +1,11 @@
 /** Azioni di alto livello dell'editor, condivise da barra strumenti, scorciatoie e pannelli. */
 import { OPENING_DEFAULTS } from "@/domain/constants";
-import { cloneRoomWithNewIds, createPlacedItem, uid } from "@/domain/factory";
-import type { OpeningKind, PlacedItem, Product, Room } from "@/domain/schema";
+import { cloneRoomWithNewIds, createFloor, createOpening, createPlacedItem, uid } from "@/domain/factory";
+import type { Floor, House, OpeningKind, PlacedItem, Product, Room } from "@/domain/schema";
+import { applyMatchThickness, joinRooms } from "@/lib/geometry/houseSnap";
+import { adjacentFloor, recomputeElevations } from "@/domain/floors";
+export { adjacentFloor, recomputeElevations };
+import { computeFloorWalls, wallKey } from "@/lib/geometry/walls";
 import { addOpening, nearestWallInRooms, removeVertex } from "@/domain/roomOps";
 import { bbox, bboxUnion, centroid, edgeLength, pointInPolygon } from "@/lib/geometry/polygon";
 import { doesNotFit, findFreeSpot, placeNearWall } from "@/lib/geometry/placement";
@@ -223,6 +227,11 @@ export function placeProductAtWorld(product: Product, world: Vec2) {
   const draft = createPlacedItem(product, local.x, local.y);
   const placed = product.mount === "ceiling" ? { x: local.x, y: local.y, rotation: 0 } : placeNearWall(room, draft, local);
   const item = { ...draft, ...placed };
+  if (product.shape === "stairs") {
+    const loc = findRoom(s.house, room.id);
+    const above = loc ? adjacentFloor(s.house, loc.floor.id, 1) : null;
+    if (above) item.linkFloorId = above.id;
+  }
   s.updateRoom(room.id, (r) => ({ ...r, items: [...r.items, item] }));
   s.select({ kind: "item", roomId: room.id, itemId: item.id });
   if (doesNotFit(room, product.width, product.depth)) {
@@ -294,4 +303,138 @@ export function reparentItemIfMoved(roomId: string, itemId: string) {
     to.items.push(moved);
   });
   s.select({ kind: "item", roomId: target.id, itemId });
+}
+
+// ---------------------------------------------------------------------------
+// Composizione della casa
+
+/** Accosta la stanza `roomId` alla stanza `targetId` creando un muro condiviso. */
+export function joinRoomTo(roomId: string, targetId: string) {
+  const s = st();
+  const a = findRoom(s.house, roomId);
+  const b = findRoom(s.house, targetId);
+  if (!a || !b || a.floorIndex !== b.floorIndex) return false;
+  const res = joinRooms(a.room, b.room);
+  if (!res) {
+    s.notify("Le due stanze non hanno lati paralleli: ruotale prima di unirle", "warning");
+    return false;
+  }
+  const merged = applyMatchThickness(
+    a.floor.rooms.map((r) => (r.id === roomId ? { ...r, x: res.x, y: res.y } : r)),
+    [res.match],
+  );
+  s.apply((h) => {
+    h.floors[a.floorIndex].rooms = merged;
+  });
+  s.notify(`${a.room.name} e ${b.room.name} ora condividono un muro`);
+  return true;
+}
+
+/** Unisce la stanza alla stanza più vicina del piano. */
+export function joinToNearest(roomId: string) {
+  const s = st();
+  const loc = findRoom(s.house, roomId);
+  if (!loc) return;
+  const me = bbox(roomWorldPolygon(loc.room));
+  let best: { id: string; d: number } | null = null;
+  for (const r of loc.floor.rooms) {
+    if (r.id === roomId) continue;
+    const o = bbox(roomWorldPolygon(r));
+    const dx = Math.max(0, Math.max(o.minX - me.maxX, me.minX - o.maxX));
+    const dy = Math.max(0, Math.max(o.minY - me.maxY, me.minY - o.maxY));
+    const d = Math.hypot(dx, dy);
+    if (!best || d < best.d) best = { id: r.id, d };
+  }
+  if (!best) {
+    s.notify("Non ci sono altre stanze su questo piano", "info");
+    return;
+  }
+  joinRoomTo(roomId, best.id);
+}
+
+/** Apre un passaggio lungo tutto il tratto condiviso del muro (es. per un open space). */
+export function openSharedWall(roomId: string, wallId: string) {
+  const s = st();
+  const loc = findRoom(s.house, roomId);
+  if (!loc) return;
+  const walls = computeFloorWalls(loc.floor.rooms);
+  const spans = walls.sharedByWall.get(wallKey(roomId, wallId)) ?? [];
+  if (!spans.length) {
+    s.notify("Questo muro non è condiviso con un'altra stanza", "info");
+    return;
+  }
+  const span = spans.reduce((a, b) => (b.s1 - b.s0 > a.s1 - a.s0 ? b : a));
+  const margin = Math.min(10, (span.s1 - span.s0) / 4);
+  const width = Math.round(span.s1 - span.s0 - margin * 2);
+  if (width < 40) {
+    s.notify("Il tratto condiviso è troppo corto per un passaggio", "warning");
+    return;
+  }
+  const opening = createOpening("passage", wallId, Math.round(span.s0 + margin), {
+    width,
+    height: Math.min(loc.room.ceilingHeight - 10, 240),
+  });
+  s.updateRoom(roomId, (r) => ({ ...r, openings: [...r.openings, opening] }));
+  s.select({ kind: "opening", roomId, openingId: opening.id });
+}
+
+// ---------------------------------------------------------------------------
+// Piani
+
+export function addFloor(where: "above" | "below") {
+  const s = st();
+  const levels = s.house.floors.map((f) => f.level);
+  const level = where === "above" ? Math.max(...levels) + 1 : Math.min(...levels) - 1;
+  const floor = createFloor(level);
+  const next = recomputeElevations({ ...s.house, floors: [...s.house.floors, floor] });
+  s.apply(() => next);
+  s.setActiveFloor(floor.id);
+  s.notify(`${floor.name} aggiunto: il piano sottostante resta visibile in trasparenza come riferimento`);
+}
+
+export function deleteFloor(floorId: string) {
+  const s = st();
+  if (s.house.floors.length <= 1) {
+    s.notify("La casa deve avere almeno un piano", "warning");
+    return;
+  }
+  const remaining = s.house.floors.filter((f) => f.id !== floorId);
+  const next = recomputeElevations({ ...s.house, floors: remaining });
+  // Le scale collegate al piano eliminato perdono il collegamento.
+  const cleaned: House = {
+    ...next,
+    floors: next.floors.map((f) => ({
+      ...f,
+      rooms: f.rooms.map((r) => ({
+        ...r,
+        items: r.items.map((it) => (it.linkFloorId === floorId ? { ...it, linkFloorId: undefined } : it)),
+      })),
+    })),
+  };
+  s.apply(() => cleaned);
+  s.setActiveFloor(remaining.find((f) => f.level === 0)?.id ?? remaining[0].id);
+}
+
+export function updateFloor(floorId: string, patch: Partial<Pick<Floor, "name" | "slabThickness" | "elevation">>) {
+  const s = st();
+  const updated = { ...s.house, floors: s.house.floors.map((f) => (f.id === floorId ? { ...f, ...patch } : f)) };
+  s.apply(() => (patch.slabThickness !== undefined ? recomputeElevations(updated) : updated));
+}
+
+
+/** Copia sul piano attivo la forma delle stanze del piano sottostante (senza arredi né porte). */
+export function copyRoomsFromBelow() {
+  const s = st();
+  const floor = activeFloor(s);
+  const below = adjacentFloor(s.house, floor.id, -1);
+  if (!below || below.rooms.length === 0) return;
+  const copies = below.rooms.map((r) => {
+    const c = cloneRoomWithNewIds(r);
+    return { ...c, items: [], openings: c.openings.filter((o) => o.kind === "window"), kitchen: undefined };
+  });
+  s.apply((h) => {
+    const f = h.floors.find((x) => x.id === floor.id);
+    f?.rooms.push(...copies);
+  });
+  s.notify(`Copiate ${copies.length} stanze da ${below.name}: modificale liberamente`);
 }

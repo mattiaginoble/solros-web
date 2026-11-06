@@ -1,7 +1,8 @@
 "use client";
 import type { ReactNode } from "react";
 import { OPENING_DND_TYPE } from "@/components/editor2d/dnd";
-import { IconDoor, IconDraw, IconPassage, IconRect, IconSelect, IconTemplate, IconWindow } from "@/components/ui/icons";
+import { IconDoor, IconDraw, IconMerge, IconPassage, IconRect, IconSelect, IconTemplate, IconWindow } from "@/components/ui/icons";
+import { joinToNearest } from "@/store/actions";
 import { useEditor, type Tool } from "@/store/editor";
 
 function ToolButton({
@@ -53,6 +54,8 @@ export function Toolbar() {
   const openDialog = useEditor((s) => s.openDialog);
   const readOnly = useEditor((s) => s.readOnly);
   const view = useEditor((s) => s.view);
+  const mode = useEditor((s) => s.mode);
+  const selectedRoomId = useEditor((s) => (s.selection?.kind === "room" ? s.selection.roomId : null));
   const toggle = (t: Tool) => setTool(tool === t ? "select" : t);
   const disabled = readOnly || view === "3d";
 
@@ -72,6 +75,13 @@ export function Toolbar() {
       </ToolButton>
       <ToolButton label="Modelli" onClick={() => openDialog("templates")} disabled={disabled}>
         <IconTemplate />
+      </ToolButton>
+      <ToolButton
+        label="Unisci"
+        onClick={() => selectedRoomId && joinToNearest(selectedRoomId)}
+        disabled={disabled || !selectedRoomId || mode !== "house"}
+      >
+        <IconMerge />
       </ToolButton>
       <div className="mx-2 my-1 h-px bg-line" />
       <ToolButton label="Porta" shortcut="P" active={tool === "door"} onClick={() => toggle("door")} dragKind="door" disabled={disabled}>

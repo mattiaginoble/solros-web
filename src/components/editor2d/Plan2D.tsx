@@ -7,15 +7,17 @@
  */
 import Konva from "konva";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Layer, Stage } from "react-konva";
+import { Layer, Line, Stage } from "react-konva";
 import { createRoom } from "@/domain/factory";
-import { addOpeningAtWorld, addRoom, fitToFloor, fitToRoom, placeProductAtWorld } from "@/store/actions";
+import { addOpeningAtWorld, addRoom, copyRoomsFromBelow, fitToFloor, fitToRoom, placeProductAtWorld } from "@/store/actions";
+import { adjacentFloor } from "@/domain/floors";
 import { activeFloor, useEditor } from "@/store/editor";
 import { useView2D } from "@/store/view2d";
 import { cleanPolygon, area, isSelfIntersecting, offsetPolygon } from "@/lib/geometry/polygon";
 import { snapDrawPoint, snapValue } from "@/lib/geometry/snap";
 import { roomWorldPolygon } from "@/lib/geometry/transform";
-import { computeFloorWalls, openingGeometries } from "@/lib/geometry/walls";
+import { computeFloorWalls, openingGeometries, type FloorWalls } from "@/lib/geometry/walls";
+import { applyMatchThickness, snapRoomPosition, type EdgeMatch } from "@/lib/geometry/houseSnap";
 import { type Vec2, add, distance, mul, normalize, sub } from "@/lib/geometry/vec";
 import { ProductSchema, type OpeningKind, type Room } from "@/domain/schema";
 import { GridLayer } from "./GridLayer";
@@ -27,6 +29,7 @@ import { DrawOverlay, emptyDraw, type DrawState } from "./DrawOverlay";
 import { ZoomControls } from "./ZoomControls";
 import { OPENING_DND_TYPE, PRODUCT_DND_TYPE } from "./dnd";
 import { PlanItems } from "./PlanItems";
+import { PlanGhosts } from "./PlanGhosts";
 
 Konva.hitOnDragEnabled = true;
 
@@ -242,21 +245,59 @@ export default function Plan2D() {
     }
   };
 
-  // Trascinamento stanze (modalità casa). Lo snap magnetico arriva con la composizione casa.
+  // Trascinamento stanze (modalità casa) con snap magnetico ai muri delle altre stanze.
   const dragStart = useRef<Room | null>(null);
+  const altDown = useRef(false);
+  const [snapMatches, setSnapMatches] = useState<EdgeMatch[]>([]);
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => (altDown.current = e.altKey);
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", down);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", down);
+    };
+  }, []);
   const roomDrag: RoomDragHandlers = {
     onDragStart: (room) => {
       dragStart.current = room;
       useEditor.getState().begin();
     },
     onDragMove: (room, pos) => {
-      const snapped = { x: snapValue(pos.x, grid), y: snapValue(pos.y, grid) };
-      useEditor.getState().updateRoom(room.id, (r) => (r.x === snapped.x && r.y === snapped.y ? r : { ...r, ...snapped }));
+      const st = useEditor.getState();
+      const others = activeFloor(st).rooms.filter((r) => r.id !== room.id);
+      let snapped = { x: snapValue(pos.x, grid), y: snapValue(pos.y, grid) };
+      let matches: EdgeMatch[] = [];
+      if (!altDown.current) {
+        const res = snapRoomPosition(room, pos, others, Math.max(6, 16 / view.scale));
+        if (res.matches.length) {
+          // Lungo gli assi non agganciati resta lo snap alla griglia.
+          snapped = { x: res.x, y: res.y };
+          matches = res.matches;
+        }
+      }
+      setSnapMatches(matches);
+      st.updateRoom(room.id, (r) => (r.x === snapped.x && r.y === snapped.y ? r : { ...r, ...snapped }));
       return snapped;
     },
-    onDragEnd: () => {
+    onDragEnd: (room) => {
+      const st = useEditor.getState();
+      const facing = snapMatches.filter((m) => m.kind === "facing");
+      if (facing.length) {
+        const floorIdx = st.house.floors.findIndex((f) => f.id === st.activeFloorId);
+        const merged = applyMatchThickness(activeFloor(st).rooms, facing);
+        st.apply((h) => {
+          h.floors[floorIdx].rooms = merged;
+        });
+        const names = facing
+          .map((m) => activeFloor(st).rooms.find((r) => r.id === m.target.roomId)?.name)
+          .filter(Boolean)
+          .join(", ");
+        st.notify(`${room.name} e ${names} ora condividono un muro`);
+      }
+      setSnapMatches([]);
       dragStart.current = null;
-      useEditor.getState().commit();
+      st.commit();
     },
   };
 
@@ -356,6 +397,9 @@ export default function Plan2D() {
           }}
         >
           <GridLayer grid={grid} />
+          <Layer listening={false}>
+            <PlanGhosts house={house} floor={floor} />
+          </Layer>
           <Layer>
             <PlanRooms
               rooms={floor.rooms}
@@ -380,6 +424,7 @@ export default function Plan2D() {
             />
             <PlanRoomLabels rooms={floor.rooms} dimmedRoomIds={dimmed} />
             {mode === "house" && selectedRoom && <RoomSelectionOutline room={selectedRoom} />}
+            <SnapHighlights matches={snapMatches} walls={walls} />
             {view.showDimensions && mode === "room" && focusedRoom && <RoomDimensions room={focusedRoom} walls={walls} />}
             {view.showDimensions && mode === "house" && selectedRoom && <RoomDimensions room={selectedRoom} walls={walls} />}
             {selectedOpening && (
@@ -407,6 +452,7 @@ function EmptyFloorHint() {
   const setTool = useEditor((s) => s.setTool);
   const openDialog = useEditor((s) => s.openDialog);
   const readOnly = useEditor((s) => s.readOnly);
+  const below = useEditor((s) => adjacentFloor(s.house, s.activeFloorId, -1));
   if (readOnly) return null;
   return (
     <div className="absolute inset-0 flex items-center justify-center p-6">
@@ -429,7 +475,46 @@ function EmptyFloorHint() {
             Disegna i muri
           </button>
         </div>
+        {below && below.rooms.length > 0 && (
+          <button
+            type="button"
+            className="mt-3 text-sm font-medium text-prussian underline"
+            onClick={() => {
+              copyRoomsFromBelow();
+              requestAnimationFrame(() => fitToFloor());
+            }}
+          >
+            Copia le stanze di {below.name.toLowerCase()}
+          </button>
+        )}
       </div>
     </div>
+  );
+}
+
+/** Evidenzia i lati agganciati durante il trascinamento di una stanza. */
+function SnapHighlights({ matches, walls }: { matches: EdgeMatch[]; walls: FloorWalls }) {
+  if (!matches.length) return null;
+  const edge = (roomId: string, wallId: string) => walls.edgesByRoom.get(roomId)?.find((e) => e.wallId === wallId);
+  return (
+    <>
+      {matches.flatMap((m, i) =>
+        [m.moving, m.target].map((ref, j) => {
+          const e = edge(ref.roomId, ref.wallId);
+          if (!e) return null;
+          return (
+            <Line
+              key={`${i}-${j}`}
+              points={[e.a.x, e.a.y, e.b.x, e.b.y]}
+              stroke={m.kind === "facing" ? "#1d4f91" : "#c2410c"}
+              strokeWidth={4}
+              dash={m.kind === "facing" ? undefined : [8, 6]}
+              strokeScaleEnabled={false}
+              listening={false}
+            />
+          );
+        }),
+      )}
+    </>
   );
 }

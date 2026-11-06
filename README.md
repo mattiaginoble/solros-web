@@ -81,6 +81,24 @@ tests/               test Vitest
 - Scorciatoie: `Canc`, `Ctrl+Z`, `Ctrl+Maiusc+Z`, `R`, `Ctrl+D`, frecce, `Esc`
   (elenco completo dal pulsante "?" nell'editor).
 
+## Composizione della casa
+
+- In modalità **Casa** ogni stanza è un blocco trascinabile. Avvicinandola a
+  un'altra, i lati affacciati si agganciano alla distanza dello spessore del
+  muro esistente (evidenziati in blu) e diventano un **muro condiviso**; i
+  muri di facciata si allineano sulla stessa retta (in arancione) e gli angoli
+  vicini combaciano. Alt disattiva lo snap.
+- **Unisci** (barra strumenti o pannello della stanza) accosta la stanza
+  selezionata a quella scelta o alla più vicina, a qualsiasi distanza.
+- Sul muro condiviso si aprono porte o passaggi come su qualsiasi muro;
+  *Apri tutto il muro condiviso* crea un passaggio lungo l'intero tratto.
+- Duplica (`Ctrl+D`), ruota (`R`), rinomina, colora e assegna un tipo
+  (cucina, camera, bagno…) alle stanze; libreria di modelli pronti.
+- **Piani**: dal selettore in alto si aggiungono piani sopra o sotto, con quota
+  calcolata da soffitto e solaio; il piano sottostante resta visibile in
+  trasparenza e si possono copiarne le stanze. Le scale del catalogo si
+  collegano a un altro piano, dove compare il loro ingombro.
+
 ## Catalogo prodotti
 
 Il catalogo è costruito attorno all'interfaccia `CatalogProvider`

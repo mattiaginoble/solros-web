@@ -2,6 +2,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, type ReactNode } from "react";
 import { useEditor } from "@/store/editor";
+import { useView2D } from "@/store/view2d";
 import { CatalogPanel } from "@/components/catalog/CatalogPanel";
 import { Dialogs } from "./Dialogs";
 import { PropertiesPanel } from "./PropertiesPanel";
@@ -30,6 +31,13 @@ export function Editor({ initialAction, topRight }: EditorProps) {
   useShortcuts();
   const view = useEditor((s) => s.view);
   const readOnly = useEditor((s) => s.readOnly);
+
+  useEffect(() => {
+    // Accesso agli store dalla console e dai test end-to-end, solo in sviluppo.
+    if (process.env.NODE_ENV !== "production") {
+      Object.assign(window, { __casa: { editor: useEditor, view: useView2D } });
+    }
+  }, []);
 
   useEffect(() => {
     const s = useEditor.getState();

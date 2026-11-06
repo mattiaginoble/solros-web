@@ -1,7 +1,7 @@
 "use client";
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Button, NumberField, SelectField, TextField, formatNumber } from "@/components/ui/controls";
-import { IconCopy, IconRotate, IconTrash, IconWarning } from "@/components/ui/icons";
+import { IconCopy, IconMerge, IconRotate, IconTrash, IconWarning } from "@/components/ui/icons";
 import { OPENING_DEFAULTS, ROOM_COLOR_SWATCHES, ROOM_TYPES, ROOM_TYPE_COLOR, ROOM_TYPE_LABEL } from "@/domain/constants";
 import { FLOOR_MATERIALS, FLOOR_MATERIAL_BY_ID, WALL_MATERIALS, WALL_MATERIAL_BY_ID } from "@/domain/materials";
 import type { Opening, OpeningKind, PlacedItem, Room, RoomType } from "@/domain/schema";
@@ -16,7 +16,18 @@ import {
 import { edgeLength } from "@/lib/geometry/polygon";
 import { rotateRoomTransform } from "@/lib/geometry/transform";
 import { computeFloorWalls, listSharedWalls } from "@/lib/geometry/walls";
-import { deleteSelection, duplicateSelection, fitToRoom, rotateSelection, updateItem } from "@/store/actions";
+import {
+  deleteFloor,
+  deleteSelection,
+  duplicateSelection,
+  fitToRoom,
+  joinRoomTo,
+  joinToNearest,
+  openSharedWall,
+  rotateSelection,
+  updateFloor,
+  updateItem,
+} from "@/store/actions";
 import { analyzeRoomItems, describeIssue } from "@/lib/geometry/placement";
 import { formatMoney, formatPriceDate, formatTotals, quoteForRoom } from "@/lib/pricing/quote";
 import { activeFloor, findRoom, useEditor } from "@/store/editor";
@@ -79,8 +90,39 @@ function FloorSummary() {
   return (
     <div className="flex flex-wrap items-start gap-8">
       <Section title={floor.name}>
+        <TextField label="Nome del piano" value={floor.name} onChange={(name) => updateFloor(floor.id, { name })} className="w-36" />
         <ReadValue label="Stanze" value={String(floor.rooms.length)} />
         <ReadValue label="Superficie netta" value={`${formatNumber(totalArea, 1)} m²`} />
+        <NumberField
+          label="Quota pavimento"
+          value={floor.elevation}
+          min={-2000}
+          max={5000}
+          onChange={(v) => updateFloor(floor.id, { elevation: v })}
+          width="w-16"
+        />
+        <NumberField
+          label="Spessore solaio"
+          value={floor.slabThickness}
+          min={0}
+          max={100}
+          onChange={(v) => updateFloor(floor.id, { slabThickness: v })}
+          width="w-14"
+        />
+        {s.house.floors.length > 1 && (
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-transparent">.</span>
+            <Button
+              variant="danger"
+              icon={<IconTrash size={16} />}
+              onClick={() => {
+                if (confirm(`Eliminare ${floor.name} con tutte le sue stanze?`)) deleteFloor(floor.id);
+              }}
+            >
+              Elimina piano
+            </Button>
+          </div>
+        )}
       </Section>
       <Section title="Impostazioni del progetto">
         <NumberField
@@ -223,6 +265,7 @@ function RoomProps({ room }: { room: Room }) {
       </Section>
 
       <RoomFurniture room={room} />
+      {mode === "house" && <JoinSection room={room} />}
 
       <Section title="Azioni">
         {mode === "house" ? (
@@ -300,6 +343,14 @@ function WallProps({ room, wallId }: { room: Room; wallId: string }) {
           width="w-16"
           hint={shared.length ? `Condiviso: spessore reale ${formatNumber(shared[0].gap, 1)} cm` : undefined}
         />
+        {shared.length > 0 && (
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-transparent">.</span>
+            <Button onClick={() => openSharedWall(room.id, wallId)} title="Apre un passaggio lungo tutto il tratto in comune">
+              Apri tutto il muro condiviso
+            </Button>
+          </div>
+        )}
         {shared.length > 0 && (
           <ReadValue
             label="Muro condiviso con"
@@ -463,6 +514,7 @@ function ItemProps({ room, item }: { room: Room; item: PlacedItem }) {
           />
         )}
       </Section>
+      {p.shape === "stairs" && <StairsLink room={room} item={item} />}
       <Section title="Prezzo">
         <NumberField label="Quantità" unit="pz" value={item.quantity ?? 1} min={1} max={999} decimals={0} onChange={(v) => up({ quantity: Math.round(v) })} width="w-12" />
         <div className="flex flex-col gap-1">
@@ -502,5 +554,54 @@ function ItemProps({ room, item }: { room: Room; item: PlacedItem }) {
         </Button>
       </Section>
     </div>
+  );
+}
+
+function JoinSection({ room }: { room: Room }) {
+  const house = useEditor((s) => s.house);
+  const activeFloorId = useEditor((s) => s.activeFloorId);
+  const others = activeFloor({ house, activeFloorId }).rooms.filter((r) => r.id !== room.id);
+  const [target, setTarget] = useState<string>("");
+  if (others.length === 0) return null;
+  const value = others.some((r) => r.id === target) ? target : others[0].id;
+  return (
+    <Section title="Unisci">
+      <SelectField
+        label="Accosta a"
+        value={value}
+        options={others.map((r) => ({ value: r.id, label: r.name }))}
+        onChange={setTarget}
+      />
+      <div className="flex flex-col gap-1">
+        <span className="text-xs text-transparent">.</span>
+        <div className="flex gap-2">
+          <Button icon={<IconMerge size={16} />} onClick={() => joinRoomTo(room.id, value)}>
+            Unisci
+          </Button>
+          <Button variant="ghost" onClick={() => joinToNearest(room.id)}>
+            Alla più vicina
+          </Button>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+function StairsLink({ room, item }: { room: Room; item: PlacedItem }) {
+  const house = useEditor((s) => s.house);
+  const loc = findRoom(house, room.id);
+  const floors = house.floors.filter((f) => f.id !== loc?.floor.id).sort((a, b) => b.level - a.level);
+  return (
+    <Section title="Collegamento tra piani">
+      <SelectField
+        label="La scala porta a"
+        value={item.linkFloorId ?? ""}
+        options={[{ value: "", label: "Nessun piano" }, ...floors.map((f) => ({ value: f.id, label: f.name }))]}
+        onChange={(v) => updateItem(room.id, item.id, { linkFloorId: v || undefined })}
+      />
+      {floors.length === 0 && (
+        <p className="max-w-xs self-center text-sm text-muted">Aggiungi un piano dal selettore in alto per collegarlo con la scala.</p>
+      )}
+    </Section>
   );
 }

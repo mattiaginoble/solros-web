@@ -7,6 +7,7 @@ import { IconCube, IconHelp, IconHome, IconPlan, IconReceipt, IconRedo, IconUndo
 import { fitToFloor, fitToRoom } from "@/store/actions";
 import { useEditor } from "@/store/editor";
 import { saveNow } from "@/store/persistence";
+import { FloorSelector } from "./FloorSelector";
 
 function SaveStatus() {
   const status = useEditor((s) => s.saveStatus);
@@ -118,6 +119,7 @@ export function TopBar({ rightSlot }: { rightSlot?: React.ReactNode }) {
       <span className="hidden h-6 w-px bg-line sm:block" />
       <ProjectName />
       <div className="ml-auto flex items-center gap-2 sm:gap-3">
+        <FloorSelector />
         <Segmented
           label="Vista di lavoro"
           value={mode}
