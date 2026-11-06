@@ -113,6 +113,44 @@ modello glTF se disponibile o modello parametrico generato dalla forma.
 - Si possono nascondere i soffitti e i piani superiori a quello attivo.
 - Clic su un oggetto per selezionarlo e modificarlo dal pannello proprietà.
 
+## Import di una planimetria
+
+Dalla home (*Carica una planimetria*) o dal pulsante **Planimetria** della
+barra strumenti si carica un file PNG, JPG o PDF (del PDF viene rasterizzata
+la prima pagina con pdf.js, il cui worker è servito localmente da `public/`).
+
+1. **Sfondo**: l'immagine diventa lo sfondo semitrasparente del piano
+   (opacità, visibilità e posizione regolabili dal pannello del piano).
+2. **Calibrazione**: si cliccano due punti di cui si conosce la distanza
+   (es. un muro quotato) e si inserisce la misura reale in cm.
+3. Due modalità:
+   - **Ricalco assistito**: lo strumento *Disegna* aggancia i punti alle facce
+     dei muri rilevate nell'immagine;
+   - **Riconoscimento automatico**: stanze, porte e finestre vengono generate
+     come bozza e restano modificabili come quelle disegnate a mano.
+
+Il riconoscimento passa per l'astrazione `FloorplanAnalyzer`
+(`src/floorplan/types.ts`) con due implementazioni:
+
+| Analizzatore | Dove gira | Come funziona |
+| --- | --- | --- |
+| locale (predefinito) | nel browser, TypeScript puro | soglia di Otsu, stima degli spessori dei muri, aperture e chiusure morfologiche, regioni chiuse = stanze, varchi = porte, linee sottili nei muri = finestre |
+| Claude vision | server, `POST /api/floorplan/analyze` | l'immagine viene inviata all'API Anthropic, che restituisce stanze e aperture in JSON validato |
+
+Per attivare l'analizzatore remoto, in `.env`:
+
+```bash
+FLOORPLAN_ANALYZER="claude"
+ANTHROPIC_API_KEY="..."
+# facoltativo, predefinito claude-opus-5-5
+ANTHROPIC_MODEL="claude-opus-5-5"
+```
+
+La richiesta usa gli output strutturati, controlla il `stop_reason` e, se i
+filtri di sicurezza del modello rifiutano l'immagine, viene ripetuta
+automaticamente sul modello di riserva consigliato (`fallbacks: "default"`).
+Senza configurazione resta disponibile solo l'analizzatore locale.
+
 ## Catalogo prodotti
 
 Il catalogo è costruito attorno all'interfaccia `CatalogProvider`

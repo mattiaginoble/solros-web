@@ -29,6 +29,7 @@ import {
   updateItem,
 } from "@/store/actions";
 import { analyzeRoomItems, describeIssue } from "@/lib/geometry/placement";
+import { setBackground, updateBackground } from "@/store/floorplan";
 import { formatMoney, formatPriceDate, formatTotals, quoteForRoom } from "@/lib/pricing/quote";
 import { activeFloor, findRoom, useEditor } from "@/store/editor";
 
@@ -124,6 +125,7 @@ function FloorSummary() {
           </div>
         )}
       </Section>
+      {floor.background && <BackgroundSection />}
       <Section title="Impostazioni del progetto">
         <NumberField
           label="Passo griglia"
@@ -602,6 +604,64 @@ function StairsLink({ room, item }: { room: Room; item: PlacedItem }) {
       {floors.length === 0 && (
         <p className="max-w-xs self-center text-sm text-muted">Aggiungi un piano dal selettore in alto per collegarlo con la scala.</p>
       )}
+    </Section>
+  );
+}
+
+function BackgroundSection() {
+  const house = useEditor((s) => s.house);
+  const activeFloorId = useEditor((s) => s.activeFloorId);
+  const setTool = useEditor((s) => s.setTool);
+  const openDialog = useEditor((s) => s.openDialog);
+  const bg = activeFloor({ house, activeFloorId }).background;
+  if (!bg) return null;
+  return (
+    <Section
+      title="Planimetria di sfondo"
+      aside={
+        <span className={`rounded border px-1 text-[10px] ${bg.calibrated ? "border-ok text-ok" : "border-warning text-warning"}`}>
+          {bg.calibrated ? "scala impostata" : "scala stimata"}
+        </span>
+      }
+    >
+      <label className="flex flex-col gap-1">
+        <span className="text-xs text-muted">Opacità</span>
+        <input
+          type="range"
+          min={0.1}
+          max={1}
+          step={0.05}
+          value={bg.opacity}
+          onChange={(e) => updateBackground({ opacity: Number(e.target.value) })}
+          className="h-9 w-28 accent-[var(--prussian)]"
+        />
+      </label>
+      <ReadValue label="Scala" value={`1 px = ${formatNumber(bg.cmPerPixel, 2)} cm`} />
+      <label className="flex h-9 items-center gap-2 self-end text-sm">
+        <input type="checkbox" checked={bg.visible} onChange={(e) => updateBackground({ visible: e.target.checked })} />
+        Visibile
+      </label>
+      <label className="flex h-9 items-center gap-2 self-end text-sm">
+        <input type="checkbox" checked={!bg.locked} onChange={(e) => updateBackground({ locked: !e.target.checked })} />
+        Spostabile
+      </label>
+      <div className="flex flex-wrap gap-2 self-end">
+        <Button size="sm" onClick={() => setTool("calibrate")}>
+          Imposta la scala
+        </Button>
+        <Button size="sm" onClick={() => openDialog("import-next")}>
+          Riconosci o ricalca
+        </Button>
+        <Button
+          size="sm"
+          variant="danger"
+          onClick={() => {
+            if (confirm("Rimuovere la planimetria di sfondo? Le stanze già create restano.")) setBackground(null);
+          }}
+        >
+          Rimuovi
+        </Button>
+      </div>
     </Section>
   );
 }

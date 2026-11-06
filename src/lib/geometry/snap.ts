@@ -82,6 +82,46 @@ export interface DrawSnapOptions {
   angleTolerance?: number;
   /** Disattiva tutti gli snap (es. tasto Alt premuto). */
   free?: boolean;
+  /** Linee di riferimento (es. facce dei muri della planimetria importata), in coordinate di piano. */
+  lines?: SnapLine[];
+}
+
+export interface SnapLine {
+  axis: "h" | "v";
+  /** y per le linee orizzontali, x per quelle verticali. */
+  value: number;
+  from: number;
+  to: number;
+}
+
+/** Aggancia le coordinate del punto alle linee di riferimento più vicine (entro la tolleranza). */
+export function snapToLines(p: Vec2, lines: SnapLine[], tol: number): { point: Vec2; guides: AlignGuide[]; hitX: boolean; hitY: boolean } {
+  let bestX: SnapLine | null = null;
+  let bestY: SnapLine | null = null;
+  let dx = tol;
+  let dy = tol;
+  for (const l of lines) {
+    if (l.axis === "h") {
+      if (p.x < l.from - tol || p.x > l.to + tol) continue;
+      const d = Math.abs(p.y - l.value);
+      if (d <= dy) {
+        dy = d;
+        bestY = l;
+      }
+    } else {
+      if (p.y < l.from - tol || p.y > l.to + tol) continue;
+      const d = Math.abs(p.x - l.value);
+      if (d <= dx) {
+        dx = d;
+        bestX = l;
+      }
+    }
+  }
+  const point = { x: bestX ? bestX.value : p.x, y: bestY ? bestY.value : p.y };
+  const guides: AlignGuide[] = [];
+  if (bestX) guides.push({ axis: "x", value: bestX.value, from: point });
+  if (bestY) guides.push({ axis: "y", value: bestY.value, from: point });
+  return { point, guides, hitX: !!bestX, hitY: !!bestY };
 }
 
 export interface DrawSnapResult {
@@ -113,6 +153,21 @@ export function snapDrawPoint(
   let p = snapToGrid(raw, opts.grid);
   let snappedTo: DrawSnapResult["snappedTo"] = "grid";
   const prev = drawn[drawn.length - 1];
+  // Facce dei muri rilevate nella planimetria: hanno la precedenza su griglia e angoli.
+  if (opts.lines?.length) {
+    const ls = snapToLines(raw, opts.lines, opts.tolerance);
+    if (ls.hitX || ls.hitY) {
+      let q = { x: ls.hitX ? ls.point.x : p.x, y: ls.hitY ? ls.point.y : p.y };
+      if (prev && !(ls.hitX && ls.hitY)) {
+        const a = snapAngle(prev, q, opts.angleStep ?? 90, opts.angleTolerance ?? 10);
+        if (a.snapped) {
+          // Mantiene l'asse agganciato alla linea e vincola l'altro all'angolo.
+          q = { x: ls.hitX ? q.x : a.point.x, y: ls.hitY ? q.y : a.point.y };
+        }
+      }
+      return { point: q, guides: ls.guides, closes: false, snappedTo: "point" };
+    }
+  }
   if (prev) {
     const a = snapAngle(prev, raw, opts.angleStep ?? 90, opts.angleTolerance ?? 10);
     if (a.snapped) {

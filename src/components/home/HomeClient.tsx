@@ -168,7 +168,6 @@ export function HomeClient() {
       text: "Usa un PNG, JPG o PDF come sfondo: imposta la scala e ricalca le stanze, oppure lascia che vengano riconosciute.",
       art: <UploadPlanArt />,
       onClick: () => createAndOpen("planimetria"),
-      soon: true,
     },
     {
       title: "Parti da un modello",
@@ -199,7 +198,7 @@ export function HomeClient() {
             <button
               key={c.title}
               type="button"
-              disabled={busy || ("soon" in c && c.soon)}
+              disabled={busy}
               onClick={c.onClick}
               className="group flex flex-col overflow-hidden rounded-[4px] border border-line-strong bg-panel text-left transition-colors hover:border-prussian disabled:opacity-60"
             >
@@ -207,7 +206,6 @@ export function HomeClient() {
               <span className="flex flex-1 flex-col gap-1.5 p-4">
                 <span className="text-lg font-semibold group-hover:text-prussian">{c.title}</span>
                 <span className="text-sm leading-relaxed text-graphite-soft">{c.text}</span>
-                {"soon" in c && c.soon && <span className="text-xs font-medium text-muted">Disponibile a breve</span>}
               </span>
             </button>
           ))}

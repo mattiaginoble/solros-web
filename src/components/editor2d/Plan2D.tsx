@@ -30,6 +30,10 @@ import { ZoomControls } from "./ZoomControls";
 import { OPENING_DND_TYPE, PRODUCT_DND_TYPE } from "./dnd";
 import { PlanItems } from "./PlanItems";
 import { PlanGhosts } from "./PlanGhosts";
+import { BackgroundLayer } from "./BackgroundLayer";
+import { CalibrationPanel, CalibrationShapes } from "./CalibrationOverlay";
+import { backgroundSnapLines } from "@/floorplan/client";
+import type { SnapLine } from "@/lib/geometry/snap";
 
 Konva.hitOnDragEnabled = true;
 
@@ -60,6 +64,21 @@ export default function Plan2D() {
   const [, setFontsReady] = useState(false);
   const [ready, setReady] = useState(false);
   const pinch = useRef<{ dist: number; center: Vec2 } | null>(null);
+  const [calib, setCalib] = useState<{ points: Vec2[]; cursor: Vec2 | null }>({ points: [], cursor: null });
+  const [bgLines, setBgLines] = useState<SnapLine[]>([]);
+  const background = floor.background ?? null;
+
+  // Facce dei muri della planimetria, per lo snap durante il ricalco e la calibrazione.
+  useEffect(() => {
+    let alive = true;
+    if (!background || !background.visible || (tool !== "draw" && tool !== "calibrate")) return;
+    backgroundSnapLines(background).then((r) => {
+      if (alive) setBgLines(r.lines);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [background, tool]);
 
   const focusedRoom = focusedRoomId ? floor.rooms.find((r) => r.id === focusedRoomId) ?? null : null;
   const dimmed = useMemo(
@@ -209,6 +228,7 @@ export default function Plan2D() {
       grid,
       tolerance: 10 / view.scale,
       free,
+      lines: background?.visible ? bgLines : undefined,
     });
     setDraw((d) => ({ ...d, cursor: res.point, guides: res.guides, closes: res.closes }));
   };
@@ -227,8 +247,21 @@ export default function Plan2D() {
       const isDouble = !!prev && now - prev.t < 400 && Math.hypot(screen.x - prev.x, screen.y - prev.y) < 6;
       lastClick.current = isDouble ? null : { t: now, x: screen.x, y: screen.y };
       const free = "altKey" in e.evt ? e.evt.altKey : false;
-      const res = snapDrawPoint(raw, drawRef.current.points, snapCandidates, { grid, tolerance: 12 / view.scale, free });
+      const res = snapDrawPoint(raw, drawRef.current.points, snapCandidates, {
+        grid,
+        tolerance: 12 / view.scale,
+        free,
+        lines: background?.visible ? bgLines : undefined,
+      });
       addDrawPoint(res.point, res.closes || isDouble);
+      return;
+    }
+    if (tool === "calibrate") {
+      const raw = worldPointer();
+      if (!raw) return;
+      const free = "altKey" in e.evt ? e.evt.altKey : false;
+      const p = free || !bgLines.length ? raw : snapDrawPoint(raw, [], [], { grid: 0.1, tolerance: 10 / view.scale, lines: bgLines }).point;
+      setCalib((c) => (c.points.length >= 2 ? { points: [p], cursor: null } : { ...c, points: [...c.points, p] }));
       return;
     }
     if (tool === "door" || tool === "window" || tool === "passage") {
@@ -365,7 +398,13 @@ export default function Plan2D() {
             const factor = Math.exp(-Math.max(-60, Math.min(60, e.evt.deltaY)) * 0.004);
             useView2D.getState().zoomAt(p, factor);
           }}
-          onMouseMove={(e) => tool === "draw" && updateDrawCursor(e.evt.altKey)}
+          onMouseMove={(e) => {
+            if (tool === "draw") updateDrawCursor(e.evt.altKey);
+            else if (tool === "calibrate" && calib.points.length === 1) {
+              const p = worldPointer();
+              if (p) setCalib((c) => ({ ...c, cursor: p }));
+            }
+          }}
           onClick={(e) => e.evt.button === 0 && onStagePointer(e)}
           onTap={onStagePointer}
           onTouchMove={(e) => {
@@ -397,6 +436,7 @@ export default function Plan2D() {
           }}
         >
           <GridLayer grid={grid} />
+          <BackgroundLayer bg={background} />
           <Layer listening={false}>
             <PlanGhosts house={house} floor={floor} />
           </Layer>
@@ -432,6 +472,7 @@ export default function Plan2D() {
             )}
             {mode === "room" && focusedRoom && !readOnly && <PlanHandles room={focusedRoom} grid={grid} />}
             {tool === "draw" && <DrawOverlay state={draw} />}
+            {tool === "calibrate" && <CalibrationShapes points={calib.points} cursor={calib.cursor} />}
           </Layer>
         </Stage>
       )}
@@ -440,7 +481,8 @@ export default function Plan2D() {
           {TOOL_HINTS[tool]}
         </div>
       )}
-      {floor.rooms.length === 0 && tool !== "draw" && (
+      {tool === "calibrate" && <CalibrationPanel points={calib.points} onReset={() => setCalib({ points: [], cursor: null })} />}
+      {floor.rooms.length === 0 && !background && tool !== "draw" && tool !== "calibrate" && (
         <EmptyFloorHint />
       )}
       <ZoomControls />
@@ -475,6 +517,9 @@ function EmptyFloorHint() {
             Disegna i muri
           </button>
         </div>
+        <button type="button" className="mt-3 text-sm font-medium text-prussian underline" onClick={() => openDialog("import")}>
+          Carica una planimetria
+        </button>
         {below && below.rooms.length > 0 && (
           <button
             type="button"

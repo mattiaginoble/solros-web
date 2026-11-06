@@ -64,3 +64,26 @@ describe("snap", () => {
     expect(r.point).toEqual({ x: 3.3, y: 4.4 });
   });
 });
+
+describe("snap alle facce dei muri importati", () => {
+  it("aggancia il punto alle linee rilevate", () => {
+    const r = snapDrawPoint({ x: 103, y: 47 }, [], [], {
+      grid: 10,
+      tolerance: 8,
+      lines: [
+        { axis: "v", value: 101.5, from: 0, to: 300 },
+        { axis: "h", value: 52.5, from: 0, to: 300 },
+      ],
+    });
+    expect(r.point).toEqual({ x: 101.5, y: 52.5 });
+  });
+
+  it("ignora linee fuori dal loro tratto", () => {
+    const r = snapDrawPoint({ x: 500, y: 47 }, [], [], {
+      grid: 10,
+      tolerance: 8,
+      lines: [{ axis: "h", value: 52.5, from: 0, to: 300 }],
+    });
+    expect(r.point).toEqual({ x: 500, y: 50 });
+  });
+});

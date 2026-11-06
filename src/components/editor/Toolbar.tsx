@@ -1,7 +1,7 @@
 "use client";
 import type { ReactNode } from "react";
 import { OPENING_DND_TYPE } from "@/components/editor2d/dnd";
-import { IconDoor, IconDraw, IconMerge, IconPassage, IconRect, IconSelect, IconTemplate, IconWindow } from "@/components/ui/icons";
+import { IconDoor, IconDraw, IconImage, IconMerge, IconPassage, IconRect, IconSelect, IconTemplate, IconWindow } from "@/components/ui/icons";
 import { joinToNearest } from "@/store/actions";
 import { useEditor, type Tool } from "@/store/editor";
 
@@ -92,6 +92,10 @@ export function Toolbar() {
       </ToolButton>
       <ToolButton label="Passaggio" active={tool === "passage"} onClick={() => toggle("passage")} dragKind="passage" disabled={disabled}>
         <IconPassage />
+      </ToolButton>
+      <div className="mx-2 my-1 h-px bg-line" />
+      <ToolButton label="Planimetria" onClick={() => openDialog("import")} disabled={disabled}>
+        <IconImage />
       </ToolButton>
     </nav>
   );

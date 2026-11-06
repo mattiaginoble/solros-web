@@ -29,6 +29,7 @@ export type DialogKind =
   | "rect"
   | "templates"
   | "import"
+  | "import-next"
   | "quote"
   | "kitchen"
   | "project"

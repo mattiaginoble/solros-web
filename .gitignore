@@ -47,3 +47,6 @@ next-env.d.ts
 /prisma/*.db
 /prisma/*.db-journal
 /src/generated/
+
+# worker di pdf.js copiato da node_modules
+/public/pdf.worker.min.mjs
