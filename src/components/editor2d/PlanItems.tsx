@@ -17,7 +17,7 @@ import { snapValue } from "@/lib/geometry/snap";
 import { reparentItemIfMoved, updateItem } from "@/store/actions";
 import { useEditor } from "@/store/editor";
 import { useView2D } from "@/store/view2d";
-import { PLAN, planFonts } from "./style";
+import { PLAN, planFonts, uprightAngle } from "./style";
 
 const flat = (pts: { x: number; y: number }[]) => pts.flatMap((p) => [p.x, p.y]);
 
@@ -234,8 +234,11 @@ function ItemNode({
         <>
           <Text
             text={`${Math.round(w)} × ${Math.round(d)}`}
-            x={-60 / scale}
-            y={-d / 2 - 16 / scale}
+            x={0}
+            y={-d / 2 - 10 / scale}
+            offsetX={60 / scale}
+            offsetY={6 / scale}
+            rotation={uprightAngle(item.rotation + room.rotation) - (item.rotation + room.rotation)}
             width={120 / scale}
             align="center"
             fontFamily={fonts.narrow}

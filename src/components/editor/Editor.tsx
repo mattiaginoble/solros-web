@@ -1,6 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useEditor } from "@/store/editor";
 import { useView2D } from "@/store/view2d";
 import { CatalogPanel } from "@/components/catalog/CatalogPanel";
@@ -36,6 +36,8 @@ export function Editor({ initialAction, topRight }: EditorProps) {
   useShortcuts();
   const view = useEditor((s) => s.view);
   const readOnly = useEditor((s) => s.readOnly);
+  // Sotto i 1024 px (tablet in verticale) il pannello laterale si apre a richiesta.
+  const [panelOpen, setPanelOpen] = useState(false);
 
   useEffect(() => {
     // Accesso agli store dalla console e dai test end-to-end, solo in sviluppo.
@@ -54,7 +56,7 @@ export function Editor({ initialAction, topRight }: EditorProps) {
   }, [initialAction]);
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-paper">
+    <div className="relative flex h-dvh flex-col overflow-hidden bg-paper">
       <TopBar rightSlot={topRight} />
       <div className="flex min-h-0 flex-1">
         {!readOnly && <Toolbar />}
@@ -64,7 +66,23 @@ export function Editor({ initialAction, topRight }: EditorProps) {
           </main>
           <PropertiesPanel />
         </div>
-        <RightPanel extraTabs={[{ id: "catalog", label: "Catalogo", content: <CatalogPanel /> }]} />
+        <button
+          type="button"
+          onClick={() => setPanelOpen((v) => !v)}
+          aria-expanded={panelOpen}
+          className={`absolute top-[68px] z-20 rounded-[6px] border border-line-strong bg-panel px-3 py-2 text-[13px] font-medium shadow-[0_8px_20px_-12px_rgba(35,39,43,0.5)] lg:hidden ${
+            panelOpen ? "right-[292px]" : "right-3"
+          }`}
+        >
+          {panelOpen ? "Chiudi pannello" : "Catalogo e stanze"}
+        </button>
+        <div
+          className={`max-lg:absolute max-lg:bottom-0 max-lg:right-0 max-lg:top-14 max-lg:z-10 max-lg:shadow-[-12px_0_30px_-18px_rgba(35,39,43,0.5)] ${
+            panelOpen ? "flex" : "max-lg:hidden"
+          } lg:flex`}
+        >
+          <RightPanel extraTabs={[{ id: "catalog", label: "Catalogo", content: <CatalogPanel /> }]} />
+        </div>
       </div>
       <Dialogs />
       <Toast />

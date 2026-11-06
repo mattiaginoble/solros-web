@@ -20,6 +20,7 @@ Comandi utili:
 | Comando | Descrizione |
 | --- | --- |
 | `npm run dev` | server di sviluppo |
+| `npm run build` / `npm start` | build e avvio di produzione |
 | `npm test` | test unitari (Vitest) |
 | `npm run typecheck` | controllo dei tipi TypeScript |
 | `npm run lint` | ESLint |
@@ -31,9 +32,12 @@ Comandi utili:
 
 - **Next.js (App Router) + TypeScript + Tailwind**: interfaccia e API.
 - **react-konva**: editor 2D della pianta.
+- **three.js + react-three-fiber (drei)**: vista 3D.
 - **Zustand + Immer**: stato dell'editor con undo/redo e salvataggio automatico.
 - **Prisma + SQLite**: progetti, catalogo prodotti, utenti semplici.
-- **Vitest**: test della logica geometrica e dei prezzi.
+- **pdf.js, PapaParse, jsPDF**: import di planimetrie PDF, import CSV, export PDF.
+- **Vitest**: test della logica geometrica, dei prezzi, del catalogo e della
+  cucina.
 
 ### Modello dati
 
@@ -60,13 +64,28 @@ stanze, quindi spostando le stanze la condivisione si crea o si rompe da sola.
 ### Cartelle principali
 
 ```
-src/domain/          modello dati, fabbriche, operazioni sulle stanze, modelli
-src/lib/geometry/    vettori, poligoni, snap, muri derivati (testati)
+src/domain/          modello dati, fabbriche, operazioni sulle stanze, modelli, case di esempio
+src/lib/geometry/    vettori, poligoni, snap, muri derivati, collisioni, posizionamento
+src/lib/pricing/     preventivo, export CSV e PDF
+src/lib/server/      database, utente, lettura sicura di pagine web (solo server)
+src/catalog/         CatalogProvider, filtri, catalogo demo, import CSV/JSON, metadati da link
+src/floorplan/       caricamento, analisi della planimetria, analizzatore Claude
+src/kitchen/         configuratore cucina (composizione moduli, finiture)
 src/store/           stato dell'editor, azioni, autosalvataggio
-src/components/      editor 2D (Konva), pannelli, home
-src/app/api/         API REST (progetti, condivisione, utente)
+src/components/      editor 2D (Konva), vista 3D, pannelli, dialoghi, home
+src/app/api/         API REST (progetti, condivisione, utente, catalogo, planimetria)
+prisma/              schema, migrazioni e seed
 tests/               test Vitest
 ```
+
+### Test
+
+`npm test` esegue i test Vitest in `tests/`: geometria (poligoni, snap, muri
+condivisi e unione delle stanze, collisioni, posizionamento degli arredi),
+operazioni sulle stanze e sui piani, prezzi ed export CSV, filtri e import del
+catalogo, metadati dei prodotti da link, protezioni della lettura di pagine
+(SSRF, robots.txt), riconoscimento delle planimetrie su immagini sintetiche,
+composizione della cucina e undo/redo dello stato.
 
 ## Utilizzo
 
@@ -80,6 +99,9 @@ tests/               test Vitest
   poi regola larghezza, altezza, altezza da terra, cerniera e verso.
 - Scorciatoie: `Canc`, `Ctrl+Z`, `Ctrl+Maiusc+Z`, `R`, `Ctrl+D`, frecce, `Esc`
   (elenco completo dal pulsante "?" nell'editor).
+- **Tablet**: tocco per selezionare e trascinare, due dita per lo zoom e lo
+  spostamento della pianta. Sotto i 1024 px di larghezza il pannello con
+  catalogo e stanze si apre dal pulsante in alto a destra.
 
 ## Composizione della casa
 
