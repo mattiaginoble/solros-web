@@ -17,6 +17,11 @@ const Plan2D = dynamic(() => import("@/components/editor2d/Plan2D"), {
   loading: () => <CanvasLoading label="Preparazione della pianta…" />,
 });
 
+const Viewer3D = dynamic(() => import("@/components/viewer3d/Viewer3D"), {
+  ssr: false,
+  loading: () => <CanvasLoading label="Preparazione della vista 3D…" />,
+});
+
 function CanvasLoading({ label }: { label: string }) {
   return <div className="paper-grid flex h-full items-center justify-center text-sm text-muted">{label}</div>;
 }
@@ -55,7 +60,7 @@ export function Editor({ initialAction, topRight }: EditorProps) {
         {!readOnly && <Toolbar />}
         <div className="flex min-w-0 flex-1 flex-col">
           <main className="relative min-h-0 flex-1" aria-label="Area di disegno">
-            {view === "2d" ? <Plan2D /> : <CanvasLoading label="La vista 3D sarà disponibile a breve in questo progetto." />}
+            {view === "2d" ? <Plan2D /> : <Viewer3D />}
           </main>
           <PropertiesPanel />
         </div>

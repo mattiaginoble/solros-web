@@ -47,6 +47,9 @@ export function useShortcuts() {
         return;
       }
       if (mod) return;
+      // In 3D lettere e frecce servono alla navigazione (camminata): niente scorciatoie di disegno.
+      const in3d = s.view === "3d";
+      if (in3d && (e.key.startsWith("Arrow") || ["w", "a", "s", "d", "v", "p", "f"].includes(key))) return;
 
       switch (e.key) {
         case "Delete":

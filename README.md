@@ -99,6 +99,20 @@ tests/               test Vitest
   trasparenza e si possono copiarne le stanze. Le scale del catalogo si
   collegano a un altro piano, dove compare il loro ingombro.
 
+## Vista 3D
+
+Il pulsante **3D** in alto passa alla vista tridimensionale (stesso progetto,
+nessuna conversione). Muri estrusi con i fori di porte e finestre, vetri e
+ante, pavimenti e pareti con materiali e texture procedurali, arredi con
+modello glTF se disponibile o modello parametrico generato dalla forma.
+
+- **Orbita**: trascina per ruotare, tasto destro per spostare, rotella per lo zoom.
+- **Camminata**: trascina per guardarti intorno, W A S D o frecce per muoverti
+  (pulsanti a schermo su tablet); i muri bloccano il passaggio, le porte no.
+- **Dall'alto**: vista ortografica in pianta.
+- Si possono nascondere i soffitti e i piani superiori a quello attivo.
+- Clic su un oggetto per selezionarlo e modificarlo dal pannello proprietà.
+
 ## Catalogo prodotti
 
 Il catalogo è costruito attorno all'interfaccia `CatalogProvider`
