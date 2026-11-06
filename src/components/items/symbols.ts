@@ -90,6 +90,8 @@ export function itemSymbol(shape: Shape | undefined, w: number, d: number, meta?
         { t: "circle", cx: w * 0.22, cy: d * 0.2, r: r * 0.8, fill: "none" },
       ];
     }
+    case "worktop":
+      return [{ ...outline, fill: "light" }, { t: "line", pts: [-hw, hd - 3, hw, hd - 3] }];
     case "hood":
       return [outline, { t: "rect", x: -hw * 0.6, y: -hd * 0.6, w: w * 0.6, h: d * 0.6, fill: "none", dash: true }];
     case "sink":

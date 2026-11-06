@@ -173,7 +173,7 @@ function ItemNode({
       y={item.y}
       rotation={item.rotation}
       draggable={canDrag}
-      opacity={item.product.mount === "ceiling" ? 0.7 : 1}
+      opacity={item.product.mount === "ceiling" ? 0.7 : item.product.shape === "worktop" ? 0.55 : 1}
       onClick={pick}
       onTap={pick}
       onMouseEnter={(e) => {

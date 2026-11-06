@@ -99,6 +99,29 @@ tests/               test Vitest
   trasparenza e si possono copiarne le stanze. Le scale del catalogo si
   collegano a un altro piano, dove compare il loro ingombro.
 
+## Configuratore cucina
+
+Dal pannello di una stanza (*Configura cucina*) o dal pulsante **Cucina** della
+barra strumenti si apre il configuratore (`src/kitchen/`):
+
+- composizione **lineare** su una parete o **ad angolo** su due pareti
+  adiacenti, con lunghezze modificabili al centimetro;
+- **riempimento automatico** delle misure con moduli base standard
+  (30/40/60/80 cm, cassettiere) e un compensatore per il resto; i moduli si
+  possono poi ridimensionare a mano e il compensatore si riadatta;
+- pensili allineati alle basi, scolapiatti sopra il lavello, nessun pensile
+  davanti alle finestre;
+- elettrodomestici agganciati ai moduli compatibili: forno sotto il piano o in
+  colonna, piano cottura a induzione o gas, lavastoviglie a scomparsa,
+  frigorifero da incasso in colonna o a libera installazione, cappa
+  sottopensile o a parete;
+- scelta di frontali, maniglie e top, con prospetto frontale e **elenco
+  componenti** con il prezzo totale.
+
+Applicando la configurazione i moduli diventano oggetti della stanza (visibili
+in pianta e in 3D) e entrano nel preventivo insieme alle finiture (sovrapprezzo
+dei frontali, maniglie, zoccolo).
+
 ## Vista 3D
 
 Il pulsante **3D** in alto passa alla vista tridimensionale (stesso progetto,

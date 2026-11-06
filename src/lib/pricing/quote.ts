@@ -4,6 +4,7 @@
  * errori di arrotondamento; valute diverse restano separate.
  */
 import type { House, PlacedItem, Product, Room } from "@/domain/schema";
+import { kitchenExtras } from "@/kitchen/compose";
 
 export interface QuoteLineInput {
   productId: string;
@@ -109,12 +110,14 @@ export function roomLineInputs(room: Room, extras?: ExtraLines): QuoteLineInput[
   return [...room.items.map(lineFromItem), ...(extras ? extras(room) : [])];
 }
 
-export function quoteForRoom(room: Room, floorName = "", extras?: ExtraLines): RoomQuote {
+export function quoteForRoom(room: Room, floorName = "", extras: ExtraLines = kitchenExtras): RoomQuote {
   const lines = aggregateLines(roomLineInputs(room, extras));
   return { roomId: room.id, roomName: room.name, floorName, lines, totals: sumTotals(lines) };
 }
 
 export function quoteForHouse(house: House, opts: { floorId?: string; extras?: ExtraLines } = {}): Quote {
+  // Righe aggiuntive predefinite: finiture della cucina (frontali, maniglie, zoccolo).
+  opts = { extras: kitchenExtras, ...opts };
   const floors = opts.floorId ? house.floors.filter((f) => f.id === opts.floorId) : house.floors;
   const byRoom: RoomQuote[] = [];
   const all: (QuoteLineInput & { room?: string })[] = [];

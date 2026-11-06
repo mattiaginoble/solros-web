@@ -1,7 +1,7 @@
 "use client";
 import type { ReactNode } from "react";
 import { OPENING_DND_TYPE } from "@/components/editor2d/dnd";
-import { IconDoor, IconDraw, IconImage, IconMerge, IconPassage, IconRect, IconSelect, IconTemplate, IconWindow } from "@/components/ui/icons";
+import { IconDoor, IconDraw, IconImage, IconKitchen, IconMerge, IconPassage, IconRect, IconSelect, IconTemplate, IconWindow } from "@/components/ui/icons";
 import { joinToNearest } from "@/store/actions";
 import { useEditor, type Tool } from "@/store/editor";
 
@@ -56,6 +56,7 @@ export function Toolbar() {
   const view = useEditor((s) => s.view);
   const mode = useEditor((s) => s.mode);
   const selectedRoomId = useEditor((s) => (s.selection?.kind === "room" ? s.selection.roomId : null));
+  const hasRoomSelected = useEditor((s) => !!(s.focusedRoomId ?? s.selection?.roomId));
   const toggle = (t: Tool) => setTool(tool === t ? "select" : t);
   const disabled = readOnly || view === "3d";
 
@@ -96,6 +97,13 @@ export function Toolbar() {
       <div className="mx-2 my-1 h-px bg-line" />
       <ToolButton label="Planimetria" onClick={() => openDialog("import")} disabled={disabled}>
         <IconImage />
+      </ToolButton>
+      <ToolButton
+        label="Cucina"
+        onClick={() => openDialog("kitchen")}
+        disabled={disabled || !hasRoomSelected}
+      >
+        <IconKitchen />
       </ToolButton>
     </nav>
   );

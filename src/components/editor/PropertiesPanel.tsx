@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState, type ReactNode } from "react";
 import { Button, NumberField, SelectField, TextField, formatNumber } from "@/components/ui/controls";
-import { IconCopy, IconMerge, IconRotate, IconTrash, IconWarning } from "@/components/ui/icons";
+import { IconCopy, IconKitchen, IconMerge, IconRotate, IconTrash, IconWarning } from "@/components/ui/icons";
 import { OPENING_DEFAULTS, ROOM_COLOR_SWATCHES, ROOM_TYPES, ROOM_TYPE_COLOR, ROOM_TYPE_LABEL } from "@/domain/constants";
 import { FLOOR_MATERIALS, FLOOR_MATERIAL_BY_ID, WALL_MATERIALS, WALL_MATERIAL_BY_ID } from "@/domain/materials";
 import type { Opening, OpeningKind, PlacedItem, Room, RoomType } from "@/domain/schema";
@@ -283,6 +283,13 @@ function RoomProps({ room }: { room: Room }) {
         ) : (
           <Button onClick={() => focusRoom(null)}>Torna alla casa</Button>
         )}
+        <Button
+          variant={room.type === "cucina" ? "primary" : "secondary"}
+          icon={<IconKitchen size={16} />}
+          onClick={() => useEditor.getState().openDialog("kitchen")}
+        >
+          {room.kitchen ? "Modifica la cucina" : "Configura cucina"}
+        </Button>
         <Button icon={<IconRotate size={16} />} onClick={() => rotateSelection(90)} title="Ruota di 90° (R)">
           Ruota
         </Button>

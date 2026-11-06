@@ -244,6 +244,8 @@ export function analyzeRoomItems(room: Room): Map<string, ItemIssue[]> {
         if (i === j || IGNORE_COLLISIONS.has(other.product.shape ?? "box")) return;
         if (!verticalOverlap(ranges[i], ranges[j])) return;
         if (ALLOWED_OVERLAPS.has(`${shape}|${other.product.shape ?? "box"}`)) return;
+        // La composizione della cucina è coerente per costruzione (forno nella colonna, piano sul modulo...).
+        if (it.kitchen && other.kitchen) return;
         if (obbOverlap(obbs[i], obbs[j])) issues.push({ kind: "collision", itemId: other.id, name: other.product.name });
       });
       // Le porte bloccano gli oggetti a terra fino a 200 cm di altezza.
@@ -261,6 +263,7 @@ export function analyzeRoomItems(room: Room): Map<string, ItemIssue[]> {
         room.items.forEach((other, j) => {
           if (blocked || i === j || IGNORE_COLLISIONS.has(other.product.shape ?? "box")) return;
           if (ALLOWED_OVERLAPS.has(`chair|${other.product.shape ?? "box"}`) && other.product.shape === "chair") return;
+          if (it.kitchen && other.kitchen) return;
           if (other.product.mount !== "floor" || ranges[j][0] > 100) return;
           if (convexOverlap(clCorners, obbCorners(obbs[j]), 0.5)) {
             blocked = true;
