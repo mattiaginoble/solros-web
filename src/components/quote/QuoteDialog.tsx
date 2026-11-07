@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { Button, Modal, Segmented } from "@/components/ui/controls";
+import { isHttpUrl } from "@/domain/schema";
 import { quoteToCsv } from "@/lib/pricing/exportCsv";
 import { downloadText, quoteToPdf, slug } from "@/lib/pricing/exportPdf";
 import { formatMoney, formatPriceDate, formatTotals, quoteForHouse, type QuoteLine } from "@/lib/pricing/quote";
@@ -51,13 +52,16 @@ export function QuoteDialog({ onClose }: { onClose: () => void }) {
   const quote = useMemo(() => quoteForHouse(house), [house]);
   const [view, setView] = useState<View>("rooms");
   const [busy, setBusy] = useState(false);
-  const links = Array.from(new Map(quote.lines.filter((l) => l.url).map((l) => [l.url!, l])).values());
+  const links = Array.from(new Map(quote.lines.filter((l) => l.url && isHttpUrl(l.url)).map((l) => [l.url!, l])).values());
 
   const openAll = () => {
     let blocked = 0;
     for (const l of links) {
-      const w = window.open(l.url, "_blank", "noopener,noreferrer");
-      if (!w) blocked++;
+      // Con "noopener" window.open restituisce sempre null e non si potrebbero
+      // contare le schede bloccate: si stacca l'opener subito dopo l'apertura.
+      const w = window.open(l.url, "_blank");
+      if (w) w.opener = null;
+      else blocked++;
     }
     if (blocked) useEditor.getState().notify(`Il browser ha bloccato ${blocked} schede: consenti i popup per questo sito o usa i link nell'elenco`, "warning");
   };

@@ -3,7 +3,7 @@ import Papa from "papaparse";
 import { useEffect, useMemo, useState } from "react";
 import { Button, Modal, NumberField, SelectField, Segmented, TextField } from "@/components/ui/controls";
 import { SymbolSvg } from "@/components/items/ProductThumb";
-import { IMPORT_FIELDS, autoDetectMapping, mapRows, rowsFromJson, type ColumnMapping } from "@/catalog/importMapping";
+import { IMPORT_FIELDS, autoDetectMapping, mapRows, normalizeLink, rowsFromJson, type ColumnMapping } from "@/catalog/importMapping";
 import type { LinkMetadata } from "@/catalog/linkMetadata";
 import { ShapeSchema, type MountType, type Shape } from "@/domain/schema";
 import { formatMoney } from "@/lib/pricing/quote";
@@ -120,6 +120,13 @@ function ProductForm({ initial, source, onSaved, note }: { initial: Draft; sourc
   const missing = !d.name.trim() || d.width <= 0 || d.depth <= 0 || d.height <= 0;
 
   const save = async () => {
+    const links = { url: normalizeLink(d.url), imageUrl: normalizeLink(d.imageUrl), modelUrl: normalizeLink(d.modelUrl) };
+    const invalid = (["url", "imageUrl", "modelUrl"] as const).find((k) => d[k].trim() && !links[k]);
+    if (invalid) {
+      const label = { url: "Il link alla pagina del prodotto", imageUrl: "L'indirizzo dell'immagine", modelUrl: "L'indirizzo del modello 3D" }[invalid];
+      setError(`${label} non è valido: usa un indirizzo che inizia con http:// o https://`);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -137,13 +144,13 @@ function ProductForm({ initial, source, onSaved, note }: { initial: Draft; sourc
         currency: d.currency.trim().toUpperCase() || "EUR",
         color: d.color.trim() || undefined,
         colorHex: d.colorHex,
-        imageUrl: d.imageUrl.trim() || undefined,
-        url: d.url.trim() || undefined,
+        imageUrl: links.imageUrl,
+        url: links.url,
         mount: d.mount,
         elevation: d.mount !== "floor" ? d.elevation : undefined,
         clearance: { front: d.clearanceFront, sides: 0 },
         shape: d.shape,
-        modelUrl: d.modelUrl.trim() || undefined,
+        modelUrl: links.modelUrl,
       };
       const res = await fetch("/api/catalog/products", {
         method: "POST",

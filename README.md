@@ -255,8 +255,15 @@ azione, i metadati pubblici della pagina (JSON-LD schema.org, Open Graph) per
 precompilare nome, prezzo, immagine e misure, che confermi o correggi prima di
 salvare. Nessuno scraping massivo: viene rispettato il `robots.txt` del sito,
 c'è un intervallo minimo tra richieste allo stesso dominio, e il server rifiuta
-indirizzi privati o locali (protezione SSRF). Se un sito non lo consente, il
-prodotto si inserisce a mano (**Inserimento manuale**).
+indirizzi privati o locali (protezione SSRF), anche in forma IPv6 e anche se il
+DNS cambia risposta dopo il primo controllo: l'indirizzo viene verificato al
+momento della connessione. Se un sito non lo consente, il prodotto si inserisce
+a mano (**Inserimento manuale**).
+
+I link dei prodotti (pagina, immagine, modello 3D) accettano solo indirizzi
+`http`/`https`; quelli scritti senza protocollo (`www.sito.it/...`) vengono
+completati. Nell'export CSV i testi che inizierebbero una formula (`=`, `+`,
+`-`, `@`) sono preceduti da un apostrofo, così Excel non li esegue.
 
 ### Aggiungere un nuovo CatalogProvider
 

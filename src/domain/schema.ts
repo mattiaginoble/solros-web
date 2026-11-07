@@ -60,6 +60,23 @@ export const ShapeSchema = z.enum([
 ]);
 export type Shape = z.infer<typeof ShapeSchema>;
 
+/** Vero per URL assoluti http o https. */
+export function isHttpUrl(value: string): boolean {
+  try {
+    const u = new URL(value);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Link esterno facoltativo, solo http(s). Altri valori (javascript:, data:,
+ * testo libero) vengono scartati senza invalidare il documento, così i
+ * progetti già salvati continuano ad aprirsi.
+ */
+const LinkSchema = z.string().refine(isHttpUrl).optional().catch(undefined);
+
 export const ProductSchema = z.object({
   id: z.string(),
   source: ProductSourceSchema.default("manual"),
@@ -75,15 +92,15 @@ export const ProductSchema = z.object({
   currency: z.string().default("EUR"),
   color: z.string().optional(),
   colorHex: z.string().optional(),
-  imageUrl: z.string().optional(),
-  url: z.string().optional(),
+  imageUrl: LinkSchema,
+  url: LinkSchema,
   mount: MountTypeSchema.default("floor"),
   /** Altezza da terra predefinita per oggetti a parete o a soffitto. */
   elevation: z.number().optional(),
   clearance: z
     .object({ front: z.number().min(0), sides: z.number().min(0) })
     .default({ front: 0, sides: 0 }),
-  modelUrl: z.string().optional(),
+  modelUrl: LinkSchema,
   shape: ShapeSchema.optional(),
   /** Metadati liberi (es. compatibilità dei moduli cucina). */
   meta: z.record(z.string(), z.unknown()).optional(),

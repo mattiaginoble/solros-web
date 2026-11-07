@@ -145,12 +145,12 @@ export function mapRows(rows: Record<string, unknown>[], mapping: ColumnMapping,
       price: Math.round(price * 100) / 100,
       currency: (str(get(row, "currency")) || opts.currency).toUpperCase().slice(0, 3),
       color: str(get(row, "color")) || undefined,
-      imageUrl: safeUrl(str(get(row, "imageUrl"))),
-      url: safeUrl(str(get(row, "url"))),
+      imageUrl: normalizeLink(str(get(row, "imageUrl"))),
+      url: normalizeLink(str(get(row, "url"))),
       mount: parseMount(get(row, "mount"), inferred.mount),
       elevation: parseLocaleNumber(get(row, "elevation")) ?? undefined,
       clearance: { front: parseLocaleNumber(get(row, "clearanceFront")) ?? 0, sides: 0 },
-      modelUrl: safeUrl(str(get(row, "modelUrl"))),
+      modelUrl: normalizeLink(str(get(row, "modelUrl"))),
       shape: inferred.shape,
       priceUpdatedAt: opts.priceDate,
     };
@@ -173,6 +173,14 @@ export function safeUrl(v: string): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+/** Come `safeUrl`, ma completa con https:// gli indirizzi scritti senza protocollo (www.sito.it/...). */
+export function normalizeLink(v: string): string | undefined {
+  const t = v.trim();
+  if (!t) return undefined;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(t)) return safeUrl(t);
+  return /^[\w-]+(\.[\w-]+)+([/?#]|$)/.test(t) ? safeUrl(`https://${t}`) : undefined;
 }
 
 /** Righe da un file JSON: array di oggetti, oppure { products: [...] } / { items: [...] }. */

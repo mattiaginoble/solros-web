@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import Papa from "papaparse";
-import { autoDetectMapping, mapRows, rowsFromJson, safeUrl } from "@/catalog/importMapping";
+import { autoDetectMapping, mapRows, normalizeLink, rowsFromJson, safeUrl } from "@/catalog/importMapping";
 import { inferShape, parseDimensions, parseLocaleNumber } from "@/catalog/normalize";
 
 const OPTS = { unit: "cm" as const, retailer: "Negozio Prova", currency: "EUR", batch: "test.csv", priceDate: "2026-11-01T00:00:00.000Z" };
@@ -31,6 +31,16 @@ describe("normalizzazione", () => {
   it("accetta solo URL http(s)", () => {
     expect(safeUrl("https://example.com/p/1")).toBe("https://example.com/p/1");
     expect(safeUrl("javascript:alert(1)")).toBeUndefined();
+  });
+
+  it("completa i link senza protocollo e scarta quelli non http(s)", () => {
+    expect(normalizeLink("www.esempio.it/divano-lisa")).toBe("https://www.esempio.it/divano-lisa");
+    expect(normalizeLink("esempio.it")).toBe("https://esempio.it/");
+    expect(normalizeLink("http://esempio.it/a")).toBe("http://esempio.it/a");
+    expect(normalizeLink("javascript:alert(1)")).toBeUndefined();
+    expect(normalizeLink("data:text/html,<script>")).toBeUndefined();
+    expect(normalizeLink("divano blu")).toBeUndefined();
+    expect(normalizeLink("")).toBeUndefined();
   });
 });
 

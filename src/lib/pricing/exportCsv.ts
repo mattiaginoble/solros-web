@@ -1,8 +1,14 @@
 /** Esportazione del preventivo in CSV (separatore ";" e virgola decimale, leggibile da Excel in italiano). */
 import type { Quote } from "./quote";
 
+/** Inizi che Excel o LibreOffice interpreterebbero come formula (CSV injection). */
+const FORMULA_START = /^[=+\-@\t\r]/;
+
 function cell(v: string | number): string {
-  const s = typeof v === "number" ? v.toFixed(2).replace(".", ",") : v;
+  let s = typeof v === "number" ? v.toFixed(2).replace(".", ",") : v;
+  // Nomi, codici e rivenditori arrivano da file importati e pagine di terzi:
+  // l'apostrofo iniziale li fa trattare come testo.
+  if (typeof v === "string" && FORMULA_START.test(s)) s = `'${s}`;
   return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
@@ -16,11 +22,11 @@ export function quoteToCsv(quote: Quote, houseName: string): string {
     String(l.quantity),
     cell(l.unitPrice),
     cell(l.total),
-    l.currency,
+    cell(l.currency),
     cell(l.rooms.join(", ")),
-    l.priceUpdatedAt ? l.priceUpdatedAt.slice(0, 10) : "",
+    cell(l.priceUpdatedAt ? l.priceUpdatedAt.slice(0, 10) : ""),
   ]);
-  const totals = Object.entries(quote.totals).map(([c, v]) => ["Totale", "", "", "", String(quote.itemCount), "", cell(v), c, "", ""]);
+  const totals = Object.entries(quote.totals).map(([c, v]) => ["Totale", "", "", "", String(quote.itemCount), "", cell(v), cell(c), "", ""]);
   const lines = [
     `# Preventivo: ${houseName}`.replace(/[\r\n]/g, " "),
     "# Prezzi indicativi: possono essere cambiati, verificare sul sito del rivenditore.",
