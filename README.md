@@ -203,7 +203,14 @@ FLOORPLAN_ANALYZER="claude"
 ANTHROPIC_API_KEY="..."
 # facoltativo, predefinito claude-opus-5-5
 ANTHROPIC_MODEL="claude-opus-5-5"
+# facoltativi: analisi all'ora per utente e in totale (predefiniti 10 e 60)
+FLOORPLAN_ANALYZER_USER_LIMIT=10
+FLOORPLAN_ANALYZER_HOURLY_LIMIT=60
 ```
+
+Ogni analisi è una chiamata a pagamento: il server ne esegue una alla volta per
+utente e applica i limiti orari indicati (contatori in memoria, azzerati al
+riavvio). Oltre il limite l'utente può usare il riconoscimento locale.
 
 La richiesta usa gli output strutturati, controlla il `stop_reason` e, se i
 filtri di sicurezza del modello rifiutano l'immagine, viene ripetuta

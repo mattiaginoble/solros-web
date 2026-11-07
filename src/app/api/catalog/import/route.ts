@@ -45,7 +45,13 @@ export async function POST(req: Request) {
         // L'id dipende dall'utente: lo stesso file importato da due utenti non si sovrascrive.
         const product = { ...p, id: `${p.id}-${user.id.slice(-6)}`, source: "import" as const };
         const row = productToRow(product, { ownerId: user.id, importBatch: batch });
-        await tx.product.upsert({ where: { id: row.id }, create: row, update: row });
+        // Si aggiornano solo i prodotti dell'utente: mai quelli di altri o del catalogo demo.
+        const existing = await tx.product.findUnique({ where: { id: row.id }, select: { ownerId: true } });
+        if (existing && existing.ownerId !== user.id) {
+          throw new HttpError(409, `«${p.name}» ha lo stesso identificativo di un prodotto che non è tuo: import annullato`);
+        }
+        if (existing) await tx.product.update({ where: { id: row.id }, data: row });
+        else await tx.product.create({ data: row });
         imported++;
       }
     });
