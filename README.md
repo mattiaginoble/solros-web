@@ -1,313 +1,362 @@
 # Configuratore Casa
 
-Pianificatore di interni per l'intera abitazione: si disegnano le stanze al
-centimetro, si compongono in una casa con muri condivisi, si arredano con
-prodotti reali e si ottiene un preventivo.
+Interior planner for the whole home: draw rooms to the centimetre, compose
+them into a house with shared walls, furnish them with real products and get
+a quote.
 
-## Avvio rapido
+The user interface is in Italian; button and menu names below are quoted as
+they appear in the app, with an English translation.
 
-Requisiti: Node.js 20 o superiore.
+**Live demo (static version):** https://mattiaginoble.github.io/solros-web/ —
+see [Static version on GitHub Pages](#static-version-on-github-pages) for what
+it includes.
+
+## Quick start
+
+Requirements: Node.js 20 or later.
 
 ```bash
-npm install            # installa le dipendenze e genera il client Prisma
-cp .env.example .env   # configurazione locale (database SQLite)
-npm run setup          # crea il database e carica catalogo demo e case di esempio
+npm install            # installs dependencies and generates the Prisma client
+cp .env.example .env   # local configuration (SQLite database)
+npm run setup          # creates the database and loads the demo catalogue and example houses
 npm run dev            # http://localhost:3000
 ```
 
-Comandi utili:
+Useful commands:
 
-| Comando | Descrizione |
+| Command | Description |
 | --- | --- |
-| `npm run dev` | server di sviluppo |
-| `npm run build` / `npm start` | build e avvio di produzione |
-| `npm test` | test unitari (Vitest) |
-| `npm run typecheck` | controllo dei tipi TypeScript |
+| `npm run dev` | development server |
+| `npm run build` / `npm start` | production build and server |
+| `npm run build:static` | static export for GitHub Pages (into `out/`) |
+| `npm test` | unit tests (Vitest) |
+| `npm run typecheck` | TypeScript type check |
 | `npm run lint` | ESLint |
-| `npm run db:migrate` | applica/crea migrazioni durante lo sviluppo |
-| `npm run db:seed` | carica catalogo demo (85 prodotti) e 3 case di esempio |
-| `npm run db:reset` | ricrea il database da zero (e riesegue il seed) |
+| `npm run db:migrate` | apply/create migrations during development |
+| `npm run db:seed` | load the demo catalogue (85 products) and 3 example houses |
+| `npm run db:reset` | recreate the database from scratch (and re-run the seed) |
 
-## Architettura
+## Static version on GitHub Pages
 
-- **Next.js (App Router) + TypeScript + Tailwind**: interfaccia e API.
-- **react-konva**: editor 2D della pianta.
-- **three.js + react-three-fiber (drei)**: vista 3D.
-- **Zustand + Immer**: stato dell'editor con undo/redo e salvataggio automatico.
-- **Prisma + SQLite**: progetti, catalogo prodotti, utenti semplici.
-- **pdf.js, PapaParse, jsPDF**: import di planimetrie PDF, import CSV, export PDF.
-- **Vitest**: test della logica geometrica, dei prezzi, del catalogo e della
-  cucina.
+GitHub Pages only serves static files, so the published site is a build of the
+app that runs entirely in the browser:
 
-### Modello dati
+- projects and the products you add are stored in the browser (IndexedDB) and
+  stay on that device: use *Esporta progetto (JSON)* (Export project) to keep
+  or move them;
+- available: room editor, house composition, floors, demo catalogue, CSV/JSON
+  catalogue import, manual products, floor plan import with local
+  recognition, kitchen configurator, 3D view, quote with PDF/CSV export,
+  JSON export/import;
+- not available, because they need the server: product from link, floor plan
+  recognition with Claude, read-only share links. The app hides them and the
+  home page explains why.
 
-`House → Floor → Room → { walls, openings, items }`, tutto in centimetri
-(`src/domain/schema.ts`, schemi zod da cui derivano i tipi).
+How it works:
 
-- Ogni stanza è un **poligono in coordinate locali** che rappresenta la faccia
-  interna dei muri, più posizione e rotazione nel piano. Le misure inserite
-  sono quindi quelle nette e l'area è quella calpestabile. Sono supportate forme
-  qualsiasi, comprese quelle a L.
-- `walls[i]` è il muro del lato `polygon[i] → polygon[i+1]` e ne definisce lo
-  spessore; i muri crescono verso l'esterno del poligono.
-- Le aperture (porte, finestre, passaggi) sono legate a un muro con distanza
-  dall'angolo, larghezza, altezza e altezza da terra.
+- `NEXT_PUBLIC_STATIC_EXPORT=1` (set by `npm run build:static`) switches Next.js
+  to `output: "export"`. API routes (`route.ts`) and pages with dynamic
+  parameters (`page.server.tsx`) are excluded through `pageExtensions`; the
+  editor becomes `/editor/?id=…` (`page.static.tsx`).
+- Components access data only through `api` (`src/lib/client/api.ts`), which
+  uses the server API or, in the static build, the browser store
+  (`src/lib/client/localBackend.ts`) with the same operations.
+- `NEXT_PUBLIC_BASE_PATH` sets the site prefix (for example `/solros-web`).
 
-### Geometria dei muri
+To try it locally:
 
-`src/lib/geometry/walls.ts` calcola i muri reali del piano a partire dalle
-stanze: giunti a spigolo vivo, e **muri condivisi** riconosciuti in modo
-geometrico (due lati affacciati a distanza pari allo spessore). Il tratto
-condiviso viene generato una sola volta e forato dalle aperture di entrambe le
-stanze, quindi spostando le stanze la condivisione si crea o si rompe da sola.
-
-### Cartelle principali
-
-```
-src/domain/          modello dati, fabbriche, operazioni sulle stanze, modelli, case di esempio
-src/lib/geometry/    vettori, poligoni, snap, muri derivati, collisioni, posizionamento
-src/lib/pricing/     preventivo, export CSV e PDF
-src/lib/server/      database, utente, lettura sicura di pagine web (solo server)
-src/catalog/         CatalogProvider, filtri, catalogo demo, import CSV/JSON, metadati da link
-src/floorplan/       caricamento, analisi della planimetria, analizzatore Claude
-src/kitchen/         configuratore cucina (composizione moduli, finiture)
-src/store/           stato dell'editor, azioni, autosalvataggio
-src/components/      editor 2D (Konva), vista 3D, pannelli, dialoghi, home
-src/app/api/         API REST (progetti, condivisione, utente, catalogo, planimetria)
-prisma/              schema, migrazioni e seed
-tests/               test Vitest
+```bash
+NEXT_PUBLIC_BASE_PATH=/solros-web npm run build:static
+# serve out/ under /solros-web/ with any static file server
 ```
 
-### Test
+Deployment: the workflow [`.github/workflows/pages.yml`](.github/workflows/pages.yml)
+runs the tests, builds the static version and publishes it on every push to the
+default branch. Enable it once in the repository settings: **Settings → Pages →
+Build and deployment → Source: GitHub Actions**.
 
-`npm test` esegue i test Vitest in `tests/`: geometria (poligoni, snap, muri
-condivisi e unione delle stanze, collisioni, posizionamento degli arredi),
-operazioni sulle stanze e sui piani, prezzi ed export CSV, filtri e import del
-catalogo, metadati dei prodotti da link, protezioni della lettura di pagine
-(SSRF, robots.txt), riconoscimento delle planimetrie su immagini sintetiche,
-composizione della cucina e undo/redo dello stato.
+## Architecture
 
-## Utilizzo
+- **Next.js (App Router) + TypeScript + Tailwind**: user interface and API.
+- **react-konva**: 2D floor plan editor.
+- **three.js + react-three-fiber (drei)**: 3D view.
+- **Zustand + Immer**: editor state with undo/redo and autosave.
+- **Prisma + SQLite**: projects, product catalogue, simple users.
+- **pdf.js, PapaParse, jsPDF**: PDF floor plan import, CSV import, PDF export.
+- **Vitest**: tests for geometry, pricing, catalogue, kitchen and data logic.
 
-- **Home**: crea una stanza dalle misure, parti da un modello o riapri un progetto.
-- **Disegno**: strumento *Disegna* (tasto D), clic per i vertici con snap alla
-  griglia, a 90° e agli allineamenti; digita una misura e premi Invio per un
-  lato esatto; chiudi cliccando sul primo punto o con doppio clic.
-- **Modalità Stanza**: trascina vertici e lati, doppio clic su un muro per
-  aggiungere un vertice, modifica ogni lato dal pannello proprietà.
-- **Aperture**: trascina porta, finestra o passaggio dalla barra su un muro,
-  poi regola larghezza, altezza, altezza da terra, cerniera e verso.
-- Scorciatoie: `Canc`, `Ctrl+Z`, `Ctrl+Maiusc+Z`, `R`, `Ctrl+D`, frecce, `Esc`
-  (elenco completo dal pulsante "?" nell'editor).
-- **Tablet**: tocco per selezionare e trascinare, due dita per lo zoom e lo
-  spostamento della pianta. Sotto i 1024 px di larghezza il pannello con
-  catalogo e stanze si apre dal pulsante in alto a destra.
+### Data model
 
-## Composizione della casa
+`House → Floor → Room → { walls, openings, items }`, all in centimetres
+(`src/domain/schema.ts`, zod schemas from which the types are derived).
 
-- In modalità **Casa** ogni stanza è un blocco trascinabile. Avvicinandola a
-  un'altra, i lati affacciati si agganciano alla distanza dello spessore del
-  muro esistente (evidenziati in blu) e diventano un **muro condiviso**; i
-  muri di facciata si allineano sulla stessa retta (in arancione) e gli angoli
-  vicini combaciano. Alt disattiva lo snap.
-- **Unisci** (barra strumenti o pannello della stanza) accosta la stanza
-  selezionata a quella scelta o alla più vicina, a qualsiasi distanza.
-- Sul muro condiviso si aprono porte o passaggi come su qualsiasi muro;
-  *Apri tutto il muro condiviso* crea un passaggio lungo l'intero tratto.
-- Duplica (`Ctrl+D`), ruota (`R`), rinomina, colora e assegna un tipo
-  (cucina, camera, bagno…) alle stanze; libreria di modelli pronti.
-- **Piani**: dal selettore in alto si aggiungono piani sopra o sotto, con quota
-  calcolata da soffitto e solaio; il piano sottostante resta visibile in
-  trasparenza e si possono copiarne le stanze. Le scale del catalogo si
-  collegano a un altro piano, dove compare il loro ingombro.
+- Each room is a **polygon in local coordinates** representing the inner face
+  of its walls, plus a position and rotation on the floor. Entered dimensions
+  are therefore net, and the area is the usable floor area. Any shape is
+  supported, including L-shapes.
+- `walls[i]` is the wall on edge `polygon[i] → polygon[i+1]` and defines its
+  thickness; walls grow outwards from the polygon.
+- Openings (doors, windows, passages) belong to a wall, with distance from the
+  corner, width, height and sill height.
 
-## Configuratore cucina
+### Wall geometry
 
-Dal pannello di una stanza (*Configura cucina*) o dal pulsante **Cucina** della
-barra strumenti si apre il configuratore (`src/kitchen/`):
+`src/lib/geometry/walls.ts` computes the actual walls of a floor from its
+rooms: mitred joints, and **shared walls** detected geometrically (two facing
+edges at a distance equal to the wall thickness). A shared segment is
+generated once and cut by the openings of both rooms, so moving rooms creates
+or breaks the shared wall automatically.
 
-- composizione **lineare** su una parete o **ad angolo** su due pareti
-  adiacenti, con lunghezze modificabili al centimetro;
-- **riempimento automatico** delle misure con moduli base standard
-  (30/40/60/80 cm, cassettiere) e un compensatore per il resto; i moduli si
-  possono poi ridimensionare a mano e il compensatore si riadatta;
-- pensili allineati alle basi, scolapiatti sopra il lavello, nessun pensile
-  davanti alle finestre;
-- elettrodomestici agganciati ai moduli compatibili: forno sotto il piano o in
-  colonna, piano cottura a induzione o gas, lavastoviglie a scomparsa,
-  frigorifero da incasso in colonna o a libera installazione, cappa
-  sottopensile o a parete;
-- scelta di frontali, maniglie e top, con prospetto frontale e **elenco
-  componenti** con il prezzo totale.
+### Project structure
 
-Applicando la configurazione i moduli diventano oggetti della stanza (visibili
-in pianta e in 3D) e entrano nel preventivo insieme alle finiture (sovrapprezzo
-dei frontali, maniglie, zoccolo).
+```
+src/domain/          data model, factories, room operations, templates, example houses
+src/lib/geometry/    vectors, polygons, snapping, derived walls, collisions, placement
+src/lib/pricing/     quote, CSV and PDF export
+src/lib/client/      data access from the browser: server API or browser store (static build)
+src/lib/server/      database, users, safe web page fetching (server only)
+src/catalog/         CatalogProvider, filters, demo catalogue, CSV/JSON import, link metadata
+src/floorplan/       floor plan loading and analysis, Claude analyzer
+src/kitchen/         kitchen configurator (module layout, finishes)
+src/store/           editor state, actions, autosave
+src/components/      2D editor (Konva), 3D view, panels, dialogs, home page
+src/app/api/         REST API (projects, sharing, users, catalogue, floor plans)
+prisma/              schema, migrations and seed
+tests/               Vitest tests
+```
 
-## Preventivo, condivisione ed export
+### Tests
 
-- **Preventivo** (totale in alto a destra): righe aggregate con quantità,
-  raggruppate per stanza o per rivenditore, oppure come lista della spesa;
-  prezzi sempre con data di aggiornamento e avviso.
-- **Esporta PDF** e **Esporta CSV** (nome, codice, rivenditore, link,
-  quantità, prezzo unitario e totale, stanze); il CSV usa `;` e la virgola
-  decimale per aprirsi correttamente in Excel in italiano.
-- **Apri i link dei prodotti**: apre le pagine dei prodotti in nuove schede
-  (il browser potrebbe chiedere di consentire i popup).
-- Menu **Progetto**: link di condivisione in sola lettura (revocabile),
-  esportazione del progetto in JSON, duplicazione. Dalla home si importa un
-  progetto JSON esportato in precedenza.
+`npm test` runs the Vitest suites in `tests/`: geometry (polygons, snapping,
+shared walls and room joining, collisions, furniture placement), room and
+floor operations, pricing and CSV export, catalogue filters and import,
+product metadata from links, protections of web page fetching (SSRF,
+robots.txt, request size), floor plan recognition on synthetic images,
+kitchen composition, rate limiting, editor undo/redo and the browser store of
+the static build.
 
-## Vista 3D
+## Usage
 
-Il pulsante **3D** in alto passa alla vista tridimensionale (stesso progetto,
-nessuna conversione). Muri estrusi con i fori di porte e finestre, vetri e
-ante, pavimenti e pareti con materiali e texture procedurali, arredi con
-modello glTF se disponibile o modello parametrico generato dalla forma.
+- **Home**: create a room from its dimensions, start from a template or reopen
+  a project.
+- **Drawing**: *Disegna* (Draw) tool, key D; click to add vertices with snapping
+  to the grid, to 90° and to alignments; type a length and press Enter for an
+  exact side; close by clicking the first point or double-clicking.
+- **Room mode** (*Stanza*): drag vertices and edges, double-click a wall to add
+  a vertex, edit every side from the properties panel.
+- **Openings**: drag a door, window or passage (*Porta*, *Finestra*,
+  *Passaggio*) from the toolbar onto a wall, then adjust width, height, sill
+  height, hinge side and swing direction.
+- Shortcuts: `Delete`, `Ctrl+Z`, `Ctrl+Shift+Z`, `R`, `Ctrl+D`, arrow keys, `Esc`
+  (full list from the "?" button in the editor).
+- **Tablets**: tap to select and drag, two fingers to zoom and pan the plan.
+  Below 1024 px width, the catalogue and rooms panel opens from the button at
+  the top right.
 
-- **Orbita**: trascina per ruotare, tasto destro per spostare, rotella per lo zoom.
-- **Camminata**: trascina per guardarti intorno, W A S D o frecce per muoverti
-  (pulsanti a schermo su tablet); i muri bloccano il passaggio, le porte no.
-- **Dall'alto**: vista ortografica in pianta.
-- Si possono nascondere i soffitti e i piani superiori a quello attivo.
-- Clic su un oggetto per selezionarlo e modificarlo dal pannello proprietà.
+## House composition
 
-## Import di una planimetria
+- In **house mode** (*Casa*) every room is a draggable block. When it gets
+  close to another room, facing edges snap at the existing wall thickness
+  (highlighted in blue) and become a **shared wall**; façade walls align on the
+  same line (orange) and nearby corners meet. Hold Alt to disable snapping.
+- **Unisci** (Join; toolbar or room panel) moves the selected room against the
+  chosen or nearest room, at any distance.
+- Doors and passages can be placed on a shared wall like on any other wall;
+  *Apri tutto il muro condiviso* (Open the whole shared wall) creates a passage
+  along the entire segment.
+- Duplicate (`Ctrl+D`), rotate (`R`), rename, colour and set a type (kitchen,
+  bedroom, bathroom…) for rooms; library of ready-made templates.
+- **Floors**: from the selector at the top, add floors above or below, with
+  the level computed from ceiling height and slab thickness; the floor below
+  stays visible in transparency and its rooms can be copied. Stairs from the
+  catalogue link to another floor, where their footprint is shown.
 
-Dalla home (*Carica una planimetria*) o dal pulsante **Planimetria** della
-barra strumenti si carica un file PNG, JPG o PDF (del PDF viene rasterizzata
-la prima pagina con pdf.js, il cui worker è servito localmente da `public/`).
+## Kitchen configurator
 
-1. **Sfondo**: l'immagine diventa lo sfondo semitrasparente del piano
-   (opacità, visibilità e posizione regolabili dal pannello del piano).
-2. **Calibrazione**: si cliccano due punti di cui si conosce la distanza
-   (es. un muro quotato) e si inserisce la misura reale in cm.
-3. Due modalità:
-   - **Ricalco assistito**: lo strumento *Disegna* aggancia i punti alle facce
-     dei muri rilevate nell'immagine;
-   - **Riconoscimento automatico**: stanze, porte e finestre vengono generate
-     come bozza e restano modificabili come quelle disegnate a mano.
+From a room panel (*Configura cucina*) or the **Cucina** (Kitchen) toolbar
+button (`src/kitchen/`):
 
-Il riconoscimento passa per l'astrazione `FloorplanAnalyzer`
-(`src/floorplan/types.ts`) con due implementazioni:
+- **linear** layout on one wall or **corner** layout on two adjacent walls,
+  with lengths editable to the centimetre;
+- **automatic filling** with standard base units (30/40/60/80 cm, drawer
+  units) and a filler for the remainder; units can then be resized by hand and
+  the filler adapts;
+- wall units aligned with the base units, dish rack above the sink, no wall
+  units in front of windows;
+- appliances attached to compatible units: oven under the worktop or in a
+  tall unit, induction or gas hob, integrated dishwasher, built-in fridge in a
+  tall unit or freestanding, under-cabinet or wall-mounted hood;
+- choice of fronts, handles and worktop, with a front elevation and a
+  **component list** with the total price.
 
-| Analizzatore | Dove gira | Come funziona |
+When applied, the units become room items (visible in plan and in 3D) and go
+into the quote together with the finishes (front surcharge, handles, plinth).
+
+## Quote, sharing and export
+
+- **Quote** (total at the top right): aggregated lines with quantities,
+  grouped by room or by retailer, or as a shopping list; prices always shown
+  with their update date and a warning that they may have changed.
+- **Esporta PDF** and **Esporta CSV** (name, code, retailer, link, quantity,
+  unit price and total, rooms); the CSV uses `;` and a decimal comma so it opens
+  correctly in Excel with Italian settings.
+- **Apri i link dei prodotti** (Open product links): opens the product pages in
+  new tabs (the browser may ask you to allow pop-ups).
+- **Progetto** (Project) menu: read-only share link (revocable), project export
+  as JSON, duplication. A previously exported JSON project can be imported from
+  the home page.
+
+## 3D view
+
+The **3D** button at the top switches to the 3D view (same project, no
+conversion). Walls are extruded with door and window openings, glass and door
+leaves, floors and walls use procedural materials and textures, and furniture
+uses its glTF model when available or a parametric model generated from its
+shape.
+
+- **Orbit** (*Orbita*): drag to rotate, right button to pan, wheel to zoom.
+- **Walk** (*Camminata*): drag to look around, W A S D or arrow keys to move
+  (on-screen buttons on tablets); walls block you, doors do not.
+- **Top** (*Dall'alto*): orthographic plan view.
+- Ceilings and floors above the active one can be hidden.
+- Click an object to select it and edit it from the properties panel.
+
+## Floor plan import
+
+From the home page (*Carica una planimetria*, Upload a floor plan) or the
+**Planimetria** toolbar button, load a PNG, JPG or PDF file (for a PDF, the
+first page is rasterized with pdf.js, whose worker is served locally from
+`public/`).
+
+1. **Background**: the image becomes the semi-transparent background of the
+   floor (opacity, visibility and position adjustable from the floor panel).
+2. **Calibration**: click two points whose distance you know (for example a
+   dimensioned wall) and enter the real length in cm.
+3. Two modes:
+   - **Assisted tracing**: the *Disegna* tool snaps points to the wall faces
+     detected in the image;
+   - **Automatic recognition**: rooms, doors and windows are generated as a
+     draft and stay editable like hand-drawn ones.
+
+Recognition goes through the `FloorplanAnalyzer` abstraction
+(`src/floorplan/types.ts`), with two implementations:
+
+| Analyzer | Runs | How it works |
 | --- | --- | --- |
-| locale (predefinito) | nel browser, TypeScript puro | soglia di Otsu, stima degli spessori dei muri, aperture e chiusure morfologiche, regioni chiuse = stanze, varchi = porte, linee sottili nei muri = finestre |
-| Claude vision | server, `POST /api/floorplan/analyze` | l'immagine viene inviata all'API Anthropic, che restituisce stanze e aperture in JSON validato |
+| local (default) | in the browser, plain TypeScript | Otsu threshold, wall thickness estimation, morphological opening and closing, closed regions = rooms, gaps = doors, thin lines inside walls = windows |
+| Claude vision | server, `POST /api/floorplan/analyze` | the image is sent to the Anthropic API, which returns rooms and openings as validated JSON |
 
-Per attivare l'analizzatore remoto, in `.env`:
+To enable the remote analyzer, in `.env`:
 
 ```bash
 FLOORPLAN_ANALYZER="claude"
 ANTHROPIC_API_KEY="..."
-# facoltativo, predefinito claude-opus-5-5
+# optional, defaults to claude-opus-5-5
 ANTHROPIC_MODEL="claude-opus-5-5"
-# facoltativi: analisi all'ora per utente e in totale (predefiniti 10 e 60)
+# optional: analyses per hour per user and in total (defaults 10 and 60)
 FLOORPLAN_ANALYZER_USER_LIMIT=10
 FLOORPLAN_ANALYZER_HOURLY_LIMIT=60
 ```
 
-Ogni analisi è una chiamata a pagamento: il server ne esegue una alla volta per
-utente e applica i limiti orari indicati (contatori in memoria, azzerati al
-riavvio). Oltre il limite l'utente può usare il riconoscimento locale.
+Each analysis is a paid API call: the server runs one at a time per user and
+applies the hourly limits above (in-memory counters, reset on restart). Past
+the limit, users can still use local recognition.
 
-La richiesta usa gli output strutturati, controlla il `stop_reason` e, se i
-filtri di sicurezza del modello rifiutano l'immagine, viene ripetuta
-automaticamente sul modello di riserva consigliato (`fallbacks: "default"`).
-Senza configurazione resta disponibile solo l'analizzatore locale.
+The request uses structured outputs, checks the `stop_reason` and, if the
+model's safety filters refuse the image, is automatically retried on the
+recommended fallback model (`fallbacks: "default"`). Without this
+configuration only the local analyzer is available.
 
-## Catalogo prodotti
+## Product catalogue
 
-Il catalogo è costruito attorno all'interfaccia `CatalogProvider`
-(`src/catalog/types.ts`): ogni sorgente restituisce i propri prodotti, mentre
-ricerca testuale, filtri (rivenditore, categoria, prezzo, dimensioni, colore) e
-faccette sono applicati in modo uniforme da `src/catalog/filter.ts`.
+The catalogue is built around the `CatalogProvider` interface
+(`src/catalog/types.ts`): each source returns its own products, while text
+search, filters (retailer, category, price, dimensions, colour) and facets are
+applied uniformly by `src/catalog/filter.ts`.
 
-| Provider | Sorgente |
+| Provider | Source |
 | --- | --- |
-| `DemoProvider` | ~80 prodotti generici con prezzi indicativi, marcati "dati demo" |
-| `FileImportProvider` | cataloghi e feed importati da CSV/JSON |
-| `ProductLinkProvider` | prodotti precompilati dal link di una pagina prodotto |
-| `ManualProvider` | prodotti personalizzati inseriti a mano |
+| `DemoProvider` | ~80 generic products with indicative prices, marked "dati demo" (demo data) |
+| `FileImportProvider` | catalogues and feeds imported from CSV/JSON |
+| `ProductLinkProvider` | products pre-filled from the link of a product page |
+| `ManualProvider` | custom products entered by hand |
 
-I prezzi sono sempre mostrati con la data di aggiornamento e l'avviso che
-possono essere cambiati. I rivenditori del catalogo demo sono fittizi.
+Prices are always shown with their update date and a warning that they may
+have changed. The retailers in the demo catalogue are fictitious.
 
-### Importare un catalogo da CSV o JSON
+### Importing a catalogue from CSV or JSON
 
-Dal pannello Catalogo: **+ Aggiungi → Da file CSV o JSON**.
+From the catalogue panel: **+ Aggiungi → Da file CSV o JSON** (Add → From CSV or
+JSON file).
 
-1. Scegli il file: CSV con intestazione (separatore `,` o `;`) oppure JSON
-   (un elenco di prodotti, anche dentro `products`/`items`; i campi annidati
-   come `offers.price` diventano colonne).
-2. Le colonne vengono riconosciute dal nome (italiano o inglese: *nome/name*,
-   *prezzo/price*, *larghezza/width*, *sku/codice*…) e si possono correggere.
-   In alternativa alle tre misure basta una colonna *dimensioni* come
-   `200x90x85 cm`.
-3. Indica l'unità delle misure (cm, mm, m) e il rivenditore predefinito, poi
-   controlla l'anteprima: le righe scartate sono elencate con il motivo.
-4. *Importa*: i prodotti finiscono nel catalogo personale, raggruppati per
-   lotto (reimportare lo stesso file aggiorna i prodotti, un lotto si può
-   eliminare in blocco).
+1. Choose the file: CSV with a header row (`,` or `;` separator) or JSON (a list
+   of products, also inside `products`/`items`; nested fields such as
+   `offers.price` become columns).
+2. Columns are recognised by name (Italian or English: *nome/name*,
+   *prezzo/price*, *larghezza/width*, *sku/codice*…) and can be corrected.
+   Instead of three dimension columns, a single *dimensioni* column such as
+   `200x90x85 cm` is enough.
+3. Set the unit of measure (cm, mm, m) and the default retailer, then check the
+   preview: discarded rows are listed with the reason.
+4. *Importa* (Import): products go into your personal catalogue, grouped by
+   batch (re-importing the same file updates the products; a batch can be
+   deleted in one go).
 
-Il file [`docs/esempio-catalogo.csv`](docs/esempio-catalogo.csv) è un esempio
-pronto. Prezzi e numeri accettano il formato italiano (`1.149,00`).
+[`docs/esempio-catalogo.csv`](docs/esempio-catalogo.csv) is a ready-made
+example. Prices and numbers accept the Italian format (`1.149,00`).
 
-### Prodotto da link e prodotto manuale
+### Product from link and manual product
 
-**+ Aggiungi → Da link**: incolli l'indirizzo della pagina di un prodotto
-(qualsiasi rivenditore) e l'app legge, con una sola richiesta e solo su tua
-azione, i metadati pubblici della pagina (JSON-LD schema.org, Open Graph) per
-precompilare nome, prezzo, immagine e misure, che confermi o correggi prima di
-salvare. Nessuno scraping massivo: viene rispettato il `robots.txt` del sito,
-c'è un intervallo minimo tra richieste allo stesso dominio, e il server rifiuta
-indirizzi privati o locali (protezione SSRF), anche in forma IPv6 e anche se il
-DNS cambia risposta dopo il primo controllo: l'indirizzo viene verificato al
-momento della connessione. Se un sito non lo consente, il prodotto si inserisce
-a mano (**Inserimento manuale**).
+**+ Aggiungi → Da link** (From link): paste the address of a product page (any
+retailer) and the app reads, with a single request and only when you ask, the
+page's public metadata (schema.org JSON-LD, Open Graph) to pre-fill name,
+price, image and dimensions, which you confirm or correct before saving. No
+bulk scraping: the site's `robots.txt` is respected, there is a minimum
+interval between requests to the same domain, and the server refuses private
+or local addresses (SSRF protection), including IPv6 forms and DNS answers
+that change after the first check: the address is verified when the
+connection is opened. If a site does not allow it, enter the product by hand
+(**Inserimento manuale**, Manual entry).
 
-I link dei prodotti (pagina, immagine, modello 3D) accettano solo indirizzi
-`http`/`https`; quelli scritti senza protocollo (`www.sito.it/...`) vengono
-completati. Nell'export CSV i testi che inizierebbero una formula (`=`, `+`,
-`-`, `@`) sono preceduti da un apostrofo, così Excel non li esegue.
+Product links (page, image, 3D model) only accept `http`/`https` addresses;
+addresses typed without a scheme (`www.site.com/...`) are completed. In the CSV
+export, text that would start a formula (`=`, `+`, `-`, `@`) is prefixed with an
+apostrophe so that Excel does not execute it.
 
-### Aggiungere un nuovo CatalogProvider
+### Adding a new CatalogProvider
 
-1. Crea un file in `src/catalog/providers/`, ad esempio `mioFeed.ts`:
+1. Create a file in `src/catalog/providers/`, for example `myFeed.ts`:
 
    ```ts
    import "server-only";
    import type { CatalogProvider } from "../types";
 
-   export const MioFeedProvider: CatalogProvider = {
-     id: "import",               // una delle sorgenti di ProductSource
-     label: "Feed Mio Negozio",
-     description: "Prodotti dal feed affiliato di Mio Negozio",
+   export const MyFeedProvider: CatalogProvider = {
+     id: "import",               // one of the ProductSource values
+     label: "My Shop feed",
+     description: "Products from My Shop's affiliate feed",
      async list(ctx) {
-       // restituisci Product[] (vedi ProductSchema in src/domain/schema.ts)
+       // return Product[] (see ProductSchema in src/domain/schema.ts)
        return [];
      },
    };
    ```
 
-2. Registralo in `CATALOG_PROVIDERS` in `src/catalog/service.ts`.
+2. Register it in `CATALOG_PROVIDERS` in `src/catalog/service.ts`.
 
-Ogni prodotto ha: id, rivenditore, nome, categoria e sottocategoria,
-larghezza/profondità/altezza in cm, prezzo e valuta, colore, immagine, URL,
-tipo di montaggio (pavimento, parete, soffitto), ingombro di rispetto
-(spazio frontale e laterale) e modello glTF opzionale. Senza glTF il 3D usa
-una forma parametrica (`shape`).
+Every product has: id, retailer, name, category and subcategory,
+width/depth/height in cm, price and currency, colour, image, URL, mounting
+type (floor, wall, ceiling), clearance (front and side space) and an optional
+glTF model. Without glTF, the 3D view uses a parametric shape (`shape`).
 
-## Arredi in pianta
+## Placing furniture
 
-- Trascina un prodotto dal catalogo sulla pianta, oppure usa **+** per
-  inserirlo nella stanza selezionata in un punto libero.
-- Durante il trascinamento l'oggetto si aggancia alle pareti (anche in
-  angolo), al centro della stanza e ai bordi degli altri oggetti; tieni
-  premuto Alt per muoverlo liberamente.
-- La maniglia davanti all'oggetto lo ruota a passi di 15°; `R` ruota di 90°.
-- Collisioni, oggetti fuori stanza, porte bloccate e ingombri di apertura
-  occupati sono evidenziati in rosso e spiegati nel pannello proprietà.
-- Gli oggetti a parete (pensili, specchi, applique) hanno l'altezza da terra
-  regolabile e non collidono con i mobili a terra sottostanti.
+- Drag a product from the catalogue onto the plan, or use **+** to place it in
+  a free spot of the selected room.
+- While dragging, the object snaps to walls (corners included), to the centre
+  of the room and to the edges of other objects; hold Alt to move it freely.
+- The handle in front of the object rotates it in 15° steps; `R` rotates by 90°.
+- Collisions, objects outside the room, blocked doors and occupied opening
+  clearances are highlighted in red and explained in the properties panel.
+- Wall-mounted objects (wall units, mirrors, wall lights) have an adjustable
+  height from the floor and do not collide with floor furniture below them.
