@@ -1,8 +1,8 @@
 import { getProduct } from "@/catalog/service";
-import { handleError, HttpError } from "@/lib/server/http";
+import { handleError, HttpError, type IdContext } from "@/lib/server/http";
 import { findCurrentUser } from "@/lib/server/user";
 
-export async function GET(_req: Request, ctx: RouteContext<"/api/catalog/[id]">) {
+export async function GET(_req: Request, ctx: IdContext) {
   try {
     const { id } = await ctx.params;
     const user = await findCurrentUser();

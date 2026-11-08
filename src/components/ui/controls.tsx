@@ -192,6 +192,7 @@ export function TextField({
   placeholder,
   className = "",
   autoFocus,
+  live = false,
 }: {
   label: string;
   value: string;
@@ -199,6 +200,12 @@ export function TextField({
   placeholder?: string;
   className?: string;
   autoFocus?: boolean;
+  /**
+   * Nei moduli: aggiorna il valore a ogni carattere e consente di svuotare il
+   * campo. Senza, il valore si conferma all'uscita dal campo e non può essere
+   * vuoto (proprietà dell'editor: una sola voce di annullamento per modifica).
+   */
+  live?: boolean;
 }) {
   const id = useId();
   const [text, setText] = useState(value);
@@ -215,8 +222,11 @@ export function TextField({
         value={text}
         placeholder={placeholder}
         autoFocus={autoFocus}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={() => text.trim() && text !== value && onChange(text.trim())}
+        onChange={(e) => {
+          setText(e.target.value);
+          if (live) onChange(e.target.value);
+        }}
+        onBlur={() => !live && text.trim() && text !== value && onChange(text.trim())}
         onKeyDown={(e) => {
           e.stopPropagation();
           if (e.key === "Enter") (e.target as HTMLInputElement).blur();

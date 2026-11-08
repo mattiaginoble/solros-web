@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button, Modal } from "@/components/ui/controls";
 import { IconShare } from "@/components/ui/icons";
 import { api } from "@/lib/client/api";
+import { BASE_PATH, editorHref, FEATURES } from "@/lib/client/mode";
 import { downloadText, slug } from "@/lib/pricing/exportPdf";
 import { useEditor } from "@/store/editor";
 import { saveNow } from "@/store/persistence";
@@ -29,7 +30,7 @@ export function ShareDialog({ onClose }: { onClose: () => void }) {
       .then(({ project }) => setToken(project.shareToken ?? null))
       .catch(() => setError("Impossibile leggere lo stato della condivisione"));
   }, [projectId]);
-  const url = token ? `${window.location.origin}/share/${token}` : "";
+  const url = token ? `${window.location.origin}${BASE_PATH}/share/${token}` : "";
   return (
     <Modal title="Condividi in sola lettura" onClose={onClose}>
       <p className="text-sm text-graphite-soft">
@@ -120,9 +121,11 @@ export function ProjectMenu() {
       </button>
       {open && (
         <div role="menu" className="absolute right-0 top-11 z-30 w-64 rounded-[6px] border border-line-strong bg-panel p-1 shadow-[0_12px_30px_-12px_rgba(35,39,43,0.4)]">
-          <button type="button" role="menuitem" className={item} disabled={!projectId || readOnly} onClick={() => { setOpen(false); openDialog("share"); }}>
-            Condividi in sola lettura
-          </button>
+          {FEATURES.sharing && (
+            <button type="button" role="menuitem" className={item} disabled={!projectId || readOnly} onClick={() => { setOpen(false); openDialog("share"); }}>
+              Condividi in sola lettura
+            </button>
+          )}
           <button type="button" role="menuitem" className={item} onClick={() => { setOpen(false); openDialog("quote"); }}>
             Preventivo ed export PDF/CSV
           </button>
@@ -139,7 +142,7 @@ export function ProjectMenu() {
               if (!projectId) return;
               if (!readOnly) await saveNow();
               const { project } = await api.duplicateProject(projectId);
-              router.push(`/editor/${project.id}`);
+              router.push(editorHref(project.id));
             }}
           >
             {readOnly ? "Crea una copia modificabile" : "Duplica progetto"}

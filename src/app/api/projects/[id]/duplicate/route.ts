@@ -1,11 +1,11 @@
 import { cloneHouseWithNewIds } from "@/domain/factory";
 import { prisma } from "@/lib/server/db";
-import { handleError } from "@/lib/server/http";
+import { handleError, type IdContext } from "@/lib/server/http";
 import { getReadableProject, toSummary, validateHouse } from "@/lib/server/projects";
 import { getCurrentUser } from "@/lib/server/user";
 
 /** Duplica un progetto (proprio o di esempio) nei progetti dell'utente. */
-export async function POST(_req: Request, ctx: RouteContext<"/api/projects/[id]/duplicate">) {
+export async function POST(_req: Request, ctx: IdContext) {
   try {
     const { id } = await ctx.params;
     const user = await getCurrentUser();

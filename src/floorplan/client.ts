@@ -1,6 +1,7 @@
 "use client";
 /** Operazioni lato browser sulle planimetrie importate. */
 import type { FloorplanBackground } from "@/domain/schema";
+import { FEATURES } from "@/lib/client/mode";
 import type { SnapLine } from "@/lib/geometry/snap";
 import { analyzeRaster, wallEdgeLines } from "./localAnalysis";
 import { imagePixels } from "./load";
@@ -49,14 +50,20 @@ export interface AnalyzerInfo {
 }
 
 export async function availableAnalyzers(): Promise<{ analyzers: AnalyzerInfo[]; default: "local" | "claude" }> {
+  if (!FEATURES.remoteAnalyzer) return LOCAL_ONLY;
   try {
     const res = await fetch("/api/floorplan/analyze");
     if (res.ok) return res.json();
   } catch {
     /* rete non disponibile: solo analisi locale */
   }
-  return { analyzers: [{ id: "local", label: "Riconoscimento locale", available: true }], default: "local" };
+  return LOCAL_ONLY;
 }
+
+const LOCAL_ONLY: { analyzers: AnalyzerInfo[]; default: "local" } = {
+  analyzers: [{ id: "local", label: "Riconoscimento locale", available: true }],
+  default: "local",
+};
 
 /** Esegue il riconoscimento: restituisce la bozza e la larghezza dell'immagine analizzata. */
 export async function runAnalysis(

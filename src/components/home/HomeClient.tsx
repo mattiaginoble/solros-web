@@ -8,6 +8,7 @@ import { cloneHouseWithNewIds, createHouse } from "@/domain/factory";
 import { safeParseHouse } from "@/domain/schema";
 import { ROOM_TEMPLATES } from "@/domain/templates";
 import { api, type ProjectSummary } from "@/lib/client/api";
+import { editorHref, STATIC_MODE } from "@/lib/client/mode";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "short", year: "numeric" });
@@ -131,7 +132,7 @@ export function HomeClient() {
     setBusy(true);
     try {
       const { project } = await api.createProject({ data: house });
-      router.push(`/editor/${project.id}?azione=${action}`);
+      router.push(editorHref(project.id, action));
     } catch {
       setError("Non è stato possibile creare il progetto.");
       setBusy(false);
@@ -150,7 +151,7 @@ export function HomeClient() {
     setBusy(true);
     try {
       const { project } = await api.createProject({ fromExampleId: exampleId });
-      router.push(`/editor/${project.id}`);
+      router.push(editorHref(project.id));
     } catch {
       setError("Non è stato possibile copiare la casa di esempio.");
       setBusy(false);
@@ -183,6 +184,15 @@ export function HomeClient() {
       <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5">
         <span className="text-[15px] font-semibold">Configuratore Casa</span>
       </header>
+      {STATIC_MODE && (
+        <div className="mx-auto max-w-6xl px-5">
+          <p role="note" className="rounded-[6px] border border-warning/40 bg-warning-tint px-4 py-3 text-sm leading-relaxed text-graphite">
+            <strong className="font-semibold">Versione dimostrativa senza server.</strong> I progetti e i prodotti che aggiungi restano
+            salvati solo in questo browser: esportali in JSON per conservarli. Prodotti da link, analisi delle planimetrie con Claude e
+            link di condivisione sono disponibili nella versione completa da avviare con Node.js.
+          </p>
+        </div>
+      )}
 
       <main className="mx-auto max-w-6xl px-5 pb-20">
         <section className="pb-10 pt-6 sm:pt-12">
@@ -238,7 +248,7 @@ export function HomeClient() {
                     if (!parsed.success) throw new Error("invalid");
                     setBusy(true);
                     const { project } = await api.createProject({ data: cloneHouseWithNewIds(parsed.data) });
-                    router.push(`/editor/${project.id}`);
+                    router.push(editorHref(project.id));
                   } catch {
                     setBusy(false);
                     setError("Il file non è un progetto valido del Configuratore Casa.");
@@ -257,10 +267,10 @@ export function HomeClient() {
                 <ProjectSheet
                   key={p.id}
                   p={p}
-                  href={`/editor/${p.id}`}
+                  href={editorHref(p.id)}
                   actions={
                     <>
-                      <Button size="sm" variant="primary" onClick={() => router.push(`/editor/${p.id}`)}>
+                      <Button size="sm" variant="primary" onClick={() => router.push(editorHref(p.id))}>
                         Apri
                       </Button>
                       <Button
@@ -306,7 +316,7 @@ export function HomeClient() {
                       <Button size="sm" variant="primary" disabled={busy} onClick={() => startFromExample(p.id)}>
                         Usa come base
                       </Button>
-                      <Button size="sm" onClick={() => router.push(`/editor/${p.id}`)}>
+                      <Button size="sm" onClick={() => router.push(editorHref(p.id))}>
                         Guarda
                       </Button>
                     </>

@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/server/db";
-import { handleError } from "@/lib/server/http";
+import { handleError, type IdContext } from "@/lib/server/http";
 import { getWritableProject, newShareToken } from "@/lib/server/projects";
 import { requireUser } from "@/lib/server/user";
 
 /** Attiva (o restituisce) il link di condivisione in sola lettura. */
-export async function POST(_req: Request, ctx: RouteContext<"/api/projects/[id]/share">) {
+export async function POST(_req: Request, ctx: IdContext) {
   try {
     const { id } = await ctx.params;
     const user = await requireUser();
@@ -18,7 +18,7 @@ export async function POST(_req: Request, ctx: RouteContext<"/api/projects/[id]/
 }
 
 /** Revoca il link: chi lo possiede non potrà più aprire il progetto. */
-export async function DELETE(_req: Request, ctx: RouteContext<"/api/projects/[id]/share">) {
+export async function DELETE(_req: Request, ctx: IdContext) {
   try {
     const { id } = await ctx.params;
     const user = await requireUser();

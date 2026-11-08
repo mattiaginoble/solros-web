@@ -5,7 +5,7 @@ import { ProductThumb } from "@/components/items/ProductThumb";
 import { IconButton } from "@/components/ui/controls";
 import { IconPlus, IconSearch } from "@/components/ui/icons";
 import type { Product } from "@/domain/schema";
-import { searchCatalog, type CatalogSearchResponse } from "@/lib/client/api";
+import { api, searchCatalog, type CatalogSearchResponse } from "@/lib/client/api";
 import { formatMoney, formatPriceDate } from "@/lib/pricing/quote";
 import { addProduct } from "@/store/actions";
 import { useEditor } from "@/store/editor";
@@ -412,8 +412,12 @@ function CatalogRow({ product: p, expanded, onToggle, disabled }: { product: Pro
                 className="font-medium text-danger underline"
                 onClick={async () => {
                   if (!confirm(`Eliminare «${p.name}» dal catalogo? Gli oggetti già posizionati restano nel progetto.`)) return;
-                  const res = await fetch(`/api/catalog/products/${encodeURIComponent(p.id)}`, { method: "DELETE" });
-                  if (res.ok) useCatalogVersion.getState().bump();
+                  try {
+                    await api.deleteProduct(p.id);
+                    useCatalogVersion.getState().bump();
+                  } catch (e) {
+                    useEditor.getState().notify(e instanceof Error ? e.message : "Eliminazione non riuscita", "warning");
+                  }
                 }}
               >
                 Elimina dal catalogo

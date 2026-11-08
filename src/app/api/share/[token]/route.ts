@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/server/db";
-import { handleError, HttpError } from "@/lib/server/http";
+import { handleError, HttpError, type TokenContext } from "@/lib/server/http";
 import { toSummary } from "@/lib/server/projects";
 
 /** Lettura pubblica di un progetto condiviso (nessun dato del proprietario). */
-export async function GET(_req: Request, ctx: RouteContext<"/api/share/[token]">) {
+export async function GET(_req: Request, ctx: TokenContext) {
   try {
     const { token } = await ctx.params;
     if (!token || token.length < 16) throw new HttpError(404, "Link non valido");

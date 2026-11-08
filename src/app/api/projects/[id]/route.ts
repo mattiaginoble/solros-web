@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/server/db";
-import { handleError, readJson } from "@/lib/server/http";
+import { handleError, readJson, type IdContext } from "@/lib/server/http";
 import { getReadableProject, getWritableProject, toSummary, validateHouse } from "@/lib/server/projects";
 import { findCurrentUser, requireUser } from "@/lib/server/user";
 
-export async function GET(_req: Request, ctx: RouteContext<"/api/projects/[id]">) {
+export async function GET(_req: Request, ctx: IdContext) {
   try {
     const { id } = await ctx.params;
     const user = await findCurrentUser();
@@ -23,7 +23,7 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/projects/[id]">
 }
 
 /** Salvataggio (anche automatico). Body: { data: House, name? }. */
-export async function PUT(req: Request, ctx: RouteContext<"/api/projects/[id]">) {
+export async function PUT(req: Request, ctx: IdContext) {
   try {
     const { id } = await ctx.params;
     const user = await requireUser();
@@ -41,7 +41,7 @@ export async function PUT(req: Request, ctx: RouteContext<"/api/projects/[id]">)
   }
 }
 
-export async function DELETE(_req: Request, ctx: RouteContext<"/api/projects/[id]">) {
+export async function DELETE(_req: Request, ctx: IdContext) {
   try {
     const { id } = await ctx.params;
     const user = await requireUser();

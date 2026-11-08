@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/server/db";
 import { productToRow, rowToProduct } from "@/lib/server/products";
 import { DEMO_PRODUCTS } from "../demoData";
+import { CATALOG_SOURCES } from "../sources";
 import type { CatalogProvider } from "../types";
 
 let seeded = false;
@@ -18,8 +19,7 @@ export async function seedDemoProducts() {
 /** Prodotti generici con prezzi indicativi, sempre disponibili. */
 export const DemoProvider: CatalogProvider = {
   id: "demo",
-  label: "Catalogo demo",
-  description: "Prodotti generici con misure e prezzi indicativi (dati demo).",
+  ...CATALOG_SOURCES.demo,
   async list() {
     try {
       if (!seeded) {

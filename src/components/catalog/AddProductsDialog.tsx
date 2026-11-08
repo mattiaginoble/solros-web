@@ -6,6 +6,8 @@ import { SymbolSvg } from "@/components/items/ProductThumb";
 import { IMPORT_FIELDS, autoDetectMapping, mapRows, normalizeLink, rowsFromJson, type ColumnMapping } from "@/catalog/importMapping";
 import type { LinkMetadata } from "@/catalog/linkMetadata";
 import { ShapeSchema, type MountType, type Shape } from "@/domain/schema";
+import { api } from "@/lib/client/api";
+import { FEATURES } from "@/lib/client/mode";
 import { formatMoney } from "@/lib/pricing/quote";
 import { useEditor } from "@/store/editor";
 import { useCatalogVersion } from "./catalogVersion";
@@ -152,13 +154,7 @@ function ProductForm({ initial, source, onSaved, note }: { initial: Draft; sourc
         shape: d.shape,
         modelUrl: links.modelUrl,
       };
-      const res = await fetch("/api/catalog/products", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ product }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error ?? "Salvataggio non riuscito");
+      await api.saveProduct(product);
       useEditor.getState().notify(`«${product.name}» aggiunto al catalogo`);
       onSaved();
     } catch (e) {
@@ -173,9 +169,9 @@ function ProductForm({ initial, source, onSaved, note }: { initial: Draft; sourc
       {note && <p className="rounded-[5px] border border-warning/40 bg-warning-tint px-3 py-2 text-[12.5px] text-graphite-soft">{note}</p>}
       <div className="grid gap-3 sm:grid-cols-[1fr_120px]">
         <div className="grid grid-cols-2 gap-3">
-          <TextField label="Nome" value={d.name} onChange={(name) => set({ name })} className="col-span-2" />
-          <TextField label="Rivenditore" value={d.retailer} onChange={(retailer) => set({ retailer })} />
-          <TextField label="Codice articolo" value={d.code} onChange={(code) => set({ code })} />
+          <TextField live label="Nome" value={d.name} onChange={(name) => set({ name })} className="col-span-2" />
+          <TextField live label="Rivenditore" value={d.retailer} onChange={(retailer) => set({ retailer })} />
+          <TextField live label="Codice articolo" value={d.code} onChange={(code) => set({ code })} />
           <SelectField label="Categoria" value={d.category} options={[...new Set([...CATEGORIES, d.category])].map((c) => ({ value: c, label: c }))} onChange={(category) => set({ category })} />
           <SelectField
             label="Forma (per pianta e 3D)"
@@ -212,14 +208,14 @@ function ProductForm({ initial, source, onSaved, note }: { initial: Draft; sourc
         <NumberField label="Spazio apertura" value={d.clearanceFront} min={0} max={200} onChange={(clearanceFront) => set({ clearanceFront })} width="w-16" />
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <TextField label="Colore" value={d.color} onChange={(color) => set({ color })} />
+        <TextField live label="Colore" value={d.color} onChange={(color) => set({ color })} />
         <label className="flex flex-col gap-1">
           <span className="text-xs text-muted">Tinta per pianta e 3D</span>
           <input type="color" value={d.colorHex} onChange={(e) => set({ colorHex: e.target.value })} className="h-9 w-full rounded border border-line-strong" />
         </label>
-        <TextField label="Link alla pagina del prodotto" value={d.url} onChange={(url) => set({ url })} />
-        <TextField label="Immagine (URL)" value={d.imageUrl} onChange={(imageUrl) => set({ imageUrl })} />
-        <TextField label="Modello 3D glTF (URL, facoltativo)" value={d.modelUrl} onChange={(modelUrl) => set({ modelUrl })} className="sm:col-span-2" />
+        <TextField live label="Link alla pagina del prodotto" value={d.url} onChange={(url) => set({ url })} />
+        <TextField live label="Immagine (URL)" value={d.imageUrl} onChange={(imageUrl) => set({ imageUrl })} />
+        <TextField live label="Modello 3D glTF (URL, facoltativo)" value={d.modelUrl} onChange={(modelUrl) => set({ modelUrl })} className="sm:col-span-2" />
       </div>
       {error && <p className="text-sm text-danger">{error}</p>}
       <div className="flex items-center justify-end gap-3">
@@ -241,10 +237,8 @@ function LinkTab({ onSaved }: { onSaved: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/catalog/link", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }) });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error ?? "Lettura non riuscita");
-      setMeta(body.metadata);
+      const { metadata } = await api.readProductLink(url);
+      setMeta(metadata);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Lettura non riuscita");
     } finally {
@@ -307,9 +301,9 @@ function FileTab({ onSaved }: { onSaved: () => void }) {
   const [busy, setBusy] = useState(false);
   const [batches, setBatches] = useState<{ batch: string; count: number }[]>([]);
   const loadBatches = () =>
-    fetch("/api/catalog/import")
-      .then((r) => r.json())
-      .then((b) => setBatches(b.batches ?? []))
+    api
+      .listImportBatches()
+      .then((b) => setBatches(b.batches))
       .catch(() => {});
   useEffect(() => {
     void loadBatches();
@@ -350,14 +344,8 @@ function FileTab({ onSaved }: { onSaved: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/catalog/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ batch: batch || "import", products: result.products }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error ?? "Import non riuscito");
-      useEditor.getState().notify(`Importati ${body.imported} prodotti nel catalogo`);
+      const { imported } = await api.importProducts(batch || "import", result.products);
+      useEditor.getState().notify(`Importati ${imported} prodotti nel catalogo`);
       setRows(null);
       void loadBatches();
       onSaved();
@@ -395,7 +383,7 @@ function FileTab({ onSaved }: { onSaved: () => void }) {
                       variant="danger"
                       onClick={async () => {
                         if (!confirm(`Eliminare i ${b.count} prodotti di «${b.batch}» dal catalogo?`)) return;
-                        await fetch(`/api/catalog/import?batch=${encodeURIComponent(b.batch)}`, { method: "DELETE" });
+                        await api.deleteImportBatch(b.batch).catch(() => {});
                         void loadBatches();
                         onSaved();
                       }}
@@ -411,8 +399,8 @@ function FileTab({ onSaved }: { onSaved: () => void }) {
       ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-3">
-            <TextField label="Nome del catalogo" value={batch} onChange={setBatch} />
-            <TextField label="Rivenditore (se manca la colonna)" value={retailer} onChange={setRetailer} placeholder="Importato" />
+            <TextField live label="Nome del catalogo" value={batch} onChange={setBatch} />
+            <TextField live label="Rivenditore (se manca la colonna)" value={retailer} onChange={setRetailer} placeholder="Importato" />
             <SelectField
               label="Unità delle misure"
               value={unit}
@@ -487,7 +475,7 @@ function FileTab({ onSaved }: { onSaved: () => void }) {
 }
 
 export function AddProductsDialog({ onClose }: { onClose: () => void }) {
-  const [tab, setTab] = useState<Tab>("link");
+  const [tab, setTab] = useState<Tab>(FEATURES.productLink ? "link" : "file");
   const bump = useCatalogVersion((s) => s.bump);
   const saved = () => {
     bump();
@@ -501,7 +489,7 @@ export function AddProductsDialog({ onClose }: { onClose: () => void }) {
           value={tab}
           onChange={setTab}
           options={[
-            { value: "link", label: "Da link" },
+            ...(FEATURES.productLink ? [{ value: "link" as const, label: "Da link" }] : []),
             { value: "file", label: "Da file CSV o JSON" },
             { value: "manual", label: "Inserimento manuale" },
           ]}

@@ -1,6 +1,10 @@
 import "server-only";
 import type { ZodError } from "zod";
 
+/** Contesto delle route con parametro dinamico (tipi espliciti: valgono anche nella build statica). */
+export type IdContext = { params: Promise<{ id: string }> };
+export type TokenContext = { params: Promise<{ token: string }> };
+
 export function jsonError(status: number, message: string, details?: unknown) {
   return Response.json({ error: message, details }, { status });
 }

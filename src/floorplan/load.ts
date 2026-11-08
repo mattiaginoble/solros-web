@@ -1,5 +1,6 @@
 "use client";
 /** Caricamento di planimetrie PNG, JPG o PDF (prima pagina) come immagine raster. */
+import { assetUrl } from "@/lib/client/mode";
 
 export interface LoadedImage {
   dataUrl: string;
@@ -35,7 +36,7 @@ async function loadRaster(file: File): Promise<LoadedImage> {
 
 async function loadPdf(file: File): Promise<LoadedImage> {
   const pdfjs = await import("pdfjs-dist");
-  pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+  pdfjs.GlobalWorkerOptions.workerSrc = assetUrl("/pdf.worker.min.mjs");
   const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
   try {
     const page = await doc.getPage(1);
