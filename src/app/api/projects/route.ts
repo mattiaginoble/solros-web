@@ -2,18 +2,18 @@ import { createHouse } from "@/domain/factory";
 import { prisma } from "@/lib/server/db";
 import { handleError, HttpError, readJson } from "@/lib/server/http";
 import { toSummary, validateHouse } from "@/lib/server/projects";
-import { getCurrentUser } from "@/lib/server/user";
+import { findCurrentUser, getCurrentUser } from "@/lib/server/user";
 
 /** Elenco dei progetti dell'utente e delle case di esempio. */
 export async function GET() {
   try {
-    const user = await getCurrentUser();
+    const user = await findCurrentUser();
     const rows = await prisma.project.findMany({
-      where: { OR: [{ ownerId: user.id }, { isExample: true }] },
+      where: user ? { OR: [{ ownerId: user.id }, { isExample: true }] } : { isExample: true },
       orderBy: { updatedAt: "desc" },
     });
     return Response.json({
-      user: { id: user.id, name: user.name },
+      user: user ? { id: user.id, name: user.name } : null,
       projects: rows.filter((r) => !r.isExample).map(toSummary),
       examples: rows.filter((r) => r.isExample).map(toSummary),
     });

@@ -1,13 +1,13 @@
 import { prisma } from "@/lib/server/db";
 import { handleError } from "@/lib/server/http";
 import { getWritableProject, newShareToken } from "@/lib/server/projects";
-import { getCurrentUser } from "@/lib/server/user";
+import { requireUser } from "@/lib/server/user";
 
 /** Attiva (o restituisce) il link di condivisione in sola lettura. */
 export async function POST(_req: Request, ctx: RouteContext<"/api/projects/[id]/share">) {
   try {
     const { id } = await ctx.params;
-    const user = await getCurrentUser();
+    const user = await requireUser();
     const p = await getWritableProject(id, user.id);
     const token = p.shareToken ?? newShareToken();
     if (!p.shareToken) await prisma.project.update({ where: { id }, data: { shareToken: token } });
@@ -21,7 +21,7 @@ export async function POST(_req: Request, ctx: RouteContext<"/api/projects/[id]/
 export async function DELETE(_req: Request, ctx: RouteContext<"/api/projects/[id]/share">) {
   try {
     const { id } = await ctx.params;
-    const user = await getCurrentUser();
+    const user = await requireUser();
     await getWritableProject(id, user.id);
     await prisma.project.update({ where: { id }, data: { shareToken: null } });
     return new Response(null, { status: 204 });

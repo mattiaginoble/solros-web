@@ -1,6 +1,7 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { prisma } from "./db";
+import { HttpError } from "./http";
 
 export const USER_COOKIE = "cc_uid";
 
@@ -15,7 +16,20 @@ export async function findCurrentUser() {
   return id ? prisma.user.findUnique({ where: { id } }) : null;
 }
 
-/** Utente corrente; se manca, ne crea uno nuovo e imposta il cookie. */
+/**
+ * Utente corrente, senza crearne uno: per modificare o eliminare dati che
+ * devono già appartenergli. Senza sessione non c'è nulla di suo.
+ */
+export async function requireUser() {
+  const user = await findCurrentUser();
+  if (!user) throw new HttpError(403, "Sessione non trovata: ricarica la pagina");
+  return user;
+}
+
+/**
+ * Utente corrente; se manca, ne crea uno nuovo e imposta il cookie. Solo per
+ * le richieste che creano dati: le letture non devono generare utenti.
+ */
 export async function getCurrentUser() {
   const existing = await findCurrentUser();
   if (existing) return existing;

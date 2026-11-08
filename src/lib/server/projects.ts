@@ -80,10 +80,10 @@ export function toSummary(p: {
 }
 
 /** Progetto leggibile dall'utente (proprietario o esempio pubblico). */
-export async function getReadableProject(id: string, userId: string) {
+export async function getReadableProject(id: string, userId: string | null) {
   const p = await prisma.project.findUnique({ where: { id } });
   if (!p) throw new HttpError(404, "Progetto non trovato");
-  if (!p.isExample && p.ownerId !== userId) throw new HttpError(403, "Progetto non accessibile");
+  if (!p.isExample && (!userId || p.ownerId !== userId)) throw new HttpError(403, "Progetto non accessibile");
   return p;
 }
 

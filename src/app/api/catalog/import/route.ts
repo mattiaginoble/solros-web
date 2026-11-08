@@ -3,7 +3,7 @@ import { ProductSchema } from "@/domain/schema";
 import { prisma } from "@/lib/server/db";
 import { handleError, HttpError, readJson, zodDetails } from "@/lib/server/http";
 import { productToRow } from "@/lib/server/products";
-import { getCurrentUser } from "@/lib/server/user";
+import { findCurrentUser, getCurrentUser, requireUser } from "@/lib/server/user";
 
 const MAX_PRODUCTS = 5000;
 
@@ -15,7 +15,8 @@ const BodySchema = z.object({
 /** Lotti importati dall'utente, con il numero di prodotti. */
 export async function GET() {
   try {
-    const user = await getCurrentUser();
+    const user = await findCurrentUser();
+    if (!user) return Response.json({ batches: [] });
     const groups = await prisma.product.groupBy({
       by: ["importBatch"],
       where: { ownerId: user.id, source: "import" },
@@ -64,7 +65,7 @@ export async function POST(req: Request) {
 /** Elimina tutti i prodotti di un lotto importato. */
 export async function DELETE(req: Request) {
   try {
-    const user = await getCurrentUser();
+    const user = await requireUser();
     const batch = new URL(req.url).searchParams.get("batch");
     if (!batch) throw new HttpError(400, "Lotto mancante");
     const res = await prisma.product.deleteMany({ where: { ownerId: user.id, source: "import", importBatch: batch } });

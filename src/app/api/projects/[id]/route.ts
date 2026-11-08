@@ -1,18 +1,19 @@
 import { prisma } from "@/lib/server/db";
 import { handleError, readJson } from "@/lib/server/http";
 import { getReadableProject, getWritableProject, toSummary, validateHouse } from "@/lib/server/projects";
-import { getCurrentUser } from "@/lib/server/user";
+import { findCurrentUser, requireUser } from "@/lib/server/user";
 
 export async function GET(_req: Request, ctx: RouteContext<"/api/projects/[id]">) {
   try {
     const { id } = await ctx.params;
-    const user = await getCurrentUser();
-    const p = await getReadableProject(id, user.id);
+    const user = await findCurrentUser();
+    const p = await getReadableProject(id, user?.id ?? null);
+    const owner = !!user && p.ownerId === user.id;
     return Response.json({
       project: {
         ...toSummary(p),
-        readOnly: p.isExample || p.ownerId !== user.id,
-        shareToken: p.ownerId === user.id ? p.shareToken : null,
+        readOnly: p.isExample || !owner,
+        shareToken: owner ? p.shareToken : null,
         data: JSON.parse(p.data),
       },
     });
@@ -25,7 +26,7 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/projects/[id]">
 export async function PUT(req: Request, ctx: RouteContext<"/api/projects/[id]">) {
   try {
     const { id } = await ctx.params;
-    const user = await getCurrentUser();
+    const user = await requireUser();
     await getWritableProject(id, user.id);
     const body = (await readJson(req)) as { data?: unknown; name?: string };
     const house = validateHouse(body.data);
@@ -43,7 +44,7 @@ export async function PUT(req: Request, ctx: RouteContext<"/api/projects/[id]">)
 export async function DELETE(_req: Request, ctx: RouteContext<"/api/projects/[id]">) {
   try {
     const { id } = await ctx.params;
-    const user = await getCurrentUser();
+    const user = await requireUser();
     await getWritableProject(id, user.id);
     await prisma.project.delete({ where: { id } });
     return new Response(null, { status: 204 });

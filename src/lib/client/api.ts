@@ -41,7 +41,7 @@ async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
 
 export const api = {
   listProjects: () =>
-    request<{ user: { id: string; name: string }; projects: ProjectSummary[]; examples: ProjectSummary[] }>(
+    request<{ user: { id: string; name: string } | null; projects: ProjectSummary[]; examples: ProjectSummary[] }>(
       "/api/projects",
     ),
   createProject: (body: { name?: string; data?: House; fromExampleId?: string }) =>

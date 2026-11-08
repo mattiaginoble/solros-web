@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/server/db";
 import { handleError, HttpError, readJson } from "@/lib/server/http";
-import { getCurrentUser } from "@/lib/server/user";
+import { findCurrentUser, getCurrentUser } from "@/lib/server/user";
 
+/** Utente corrente, o null se il browser non ha ancora creato nulla. */
 export async function GET() {
   try {
-    const user = await getCurrentUser();
-    return Response.json({ user: { id: user.id, name: user.name } });
+    const user = await findCurrentUser();
+    return Response.json({ user: user ? { id: user.id, name: user.name } : null });
   } catch (err) {
     return handleError(err);
   }
