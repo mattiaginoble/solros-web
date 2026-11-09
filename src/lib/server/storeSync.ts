@@ -260,9 +260,17 @@ export async function syncStorePages(opts: SyncOptions = {}): Promise<SyncReport
 export async function storeSyncStatus() {
   const rows = await prisma.storePage.groupBy({ by: ["status"], _count: { _all: true } });
   const last = await prisma.storePage.findFirst({ where: { lastCheckedAt: { not: null } }, orderBy: { lastCheckedAt: "desc" }, select: { lastCheckedAt: true } });
+  // Pagine non andate a buon fine, con il motivo: servono a migliorare la lettura.
+  const problems = await prisma.storePage.findMany({
+    where: { status: { in: ["incomplete", "error", "removed", "robots"] } },
+    select: { url: true, status: true, note: true, subcategory: true },
+    orderBy: { url: "asc" },
+    take: 100,
+  });
   return {
     pages: Object.fromEntries(rows.map((r) => [r.status, r._count._all])),
     products: await prisma.product.count({ where: { source: "store", ownerId: null } }),
     lastCheckedAt: last?.lastCheckedAt?.toISOString() ?? null,
+    problems,
   };
 }
