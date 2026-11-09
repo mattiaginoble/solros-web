@@ -192,7 +192,9 @@ export function extractProductMetadata(html: string, pageUrl: string): LinkMetad
       }
     }
   }
-  meta.isProduct = !!product || /product/i.test(metaContent(html, "og:type") ?? "") || meta.price !== undefined;
+  // og:type "product" sì, "product.group" (pagine di categoria) no.
+  const ogType = (metaContent(html, "og:type") ?? "").toLowerCase();
+  meta.isProduct = !!product || ["product", "product.item", "og:product"].includes(ogType) || meta.price !== undefined;
   if (!meta.category || meta.category.length > 60) meta.category = categoryForShape(inferred.shape);
   if (meta.currency) meta.currency = meta.currency.toUpperCase().slice(0, 3);
   return meta;

@@ -100,7 +100,7 @@ describe("metadati da link prodotto", () => {
   });
 
   it("segnala le pagine senza dati di prodotto (categorie, ricerche)", () => {
-    const html = `<html><head><title>BILLY Librerie</title><meta property="og:title" content="BILLY Librerie"><meta property="og:type" content="website"></head></html>`;
+    const html = `<html><head><title>BILLY Librerie</title><meta property="og:title" content="BILLY Librerie"><meta property="og:type" content="product.group"></head></html>`;
     expect(extractProductMetadata(html, "https://www.ikea.com/it/it/cat/billy-58288/").isProduct).toBe(false);
   });
 
