@@ -4,7 +4,7 @@
  */
 import { ProductSchema, type MountType, type Product } from "@/domain/schema";
 import { normalizeText } from "./filter";
-import { categoryForShape, inferShape, parseDimensions, parseLocaleNumber, shortHash, unitToCm } from "./normalize";
+import { categoryForShape, inferShape, parseDimensions, parseLocaleNumber, parseMeasure, shortHash } from "./normalize";
 
 export type ImportField =
   | "name"
@@ -16,7 +16,9 @@ export type ImportField =
   | "depth"
   | "height"
   | "dimensions"
+  | "description"
   | "price"
+  | "salePrice"
   | "currency"
   | "color"
   | "imageUrl"
@@ -28,11 +30,13 @@ export type ImportField =
 
 export const IMPORT_FIELDS: { id: ImportField; label: string; required?: boolean; synonyms: string[] }[] = [
   { id: "name", label: "Nome", required: true, synonyms: ["nome", "name", "title", "titolo", "prodotto", "product", "product_name", "nome_prodotto"] },
-  { id: "price", label: "Prezzo", required: true, synonyms: ["prezzo", "price", "costo", "importo", "sale_price", "prezzo_eur", "price_eur"] },
-  { id: "width", label: "Larghezza", synonyms: ["larghezza", "width", "larg", "l", "w", "larghezza_cm", "width_cm"] },
-  { id: "depth", label: "Profondità", synonyms: ["profondita", "depth", "prof", "p", "d", "profondita_cm", "depth_cm", "lunghezza", "length"] },
-  { id: "height", label: "Altezza", synonyms: ["altezza", "height", "alt", "h", "altezza_cm", "height_cm"] },
+  { id: "price", label: "Prezzo", required: true, synonyms: ["prezzo", "price", "costo", "importo", "prezzo_eur", "price_eur"] },
+  { id: "salePrice", label: "Prezzo scontato", synonyms: ["sale_price", "prezzo_scontato", "prezzo_offerta", "offer_price"] },
+  { id: "width", label: "Larghezza", synonyms: ["larghezza", "width", "larg", "l", "w", "larghezza_cm", "width_cm", "product_width"] },
+  { id: "depth", label: "Profondità", synonyms: ["profondita", "depth", "prof", "p", "d", "profondita_cm", "depth_cm", "lunghezza", "length", "product_length", "product_depth"] },
+  { id: "height", label: "Altezza", synonyms: ["altezza", "height", "alt", "h", "altezza_cm", "height_cm", "product_height"] },
   { id: "dimensions", label: "Dimensioni (testo)", synonyms: ["dimensioni", "dimensions", "misure", "size", "ingombro_totale"] },
+  { id: "description", label: "Descrizione (per le misure)", synonyms: ["descrizione", "description", "desc"] },
   { id: "retailer", label: "Rivenditore", synonyms: ["retailer", "rivenditore", "brand", "marca", "negozio", "store", "venditore", "marchio"] },
   { id: "code", label: "Codice", synonyms: ["codice", "code", "sku", "articolo", "ean", "mpn", "id", "codice_articolo", "gtin"] },
   { id: "category", label: "Categoria", synonyms: ["categoria", "category", "reparto", "product_type", "google_product_category"] },
@@ -93,11 +97,13 @@ function parseMount(v: unknown, fallback: MountType): MountType {
 
 const str = (v: unknown) => (v === undefined || v === null ? "" : String(v).trim());
 
+/** Valuta scritta nel prezzo, come nei feed Google ("899.00 EUR"). */
+const currencyIn = (v: unknown) => (typeof v === "string" ? /\b([A-Z]{3})\b/.exec(v)?.[1] : undefined);
+
 /** Converte le righe (oggetti chiave → valore) in prodotti validati. */
 export function mapRows(rows: Record<string, unknown>[], mapping: ColumnMapping, opts: MapOptions): MapResult {
   const products: Product[] = [];
   const errors: MapResult["errors"] = [];
-  const k = unitToCm(opts.unit);
   const get = (row: Record<string, unknown>, f: ImportField) => (mapping[f] ? row[mapping[f]!] : undefined);
   rows.forEach((row, i) => {
     const line = i + 2; // riga del file (intestazione = 1)
@@ -106,20 +112,22 @@ export function mapRows(rows: Record<string, unknown>[], mapping: ColumnMapping,
       errors.push({ row: line, message: "Nome mancante" });
       return;
     }
-    const price = parseLocaleNumber(get(row, "price"));
+    const priceRaw = get(row, "price");
+    const listPrice = parseLocaleNumber(priceRaw);
+    // Prezzo scontato in corso (feed Google: sale_price), se valido e più basso.
+    const salePrice = parseLocaleNumber(get(row, "salePrice"));
+    const price = salePrice !== null && salePrice >= 0 && (listPrice === null || salePrice < listPrice) ? salePrice : listPrice;
     if (price === null || price < 0) {
       errors.push({ row: line, message: `Prezzo non valido per «${name}»` });
       return;
     }
-    let width = parseLocaleNumber(get(row, "width"));
-    let depth = parseLocaleNumber(get(row, "depth"));
-    let height = parseLocaleNumber(get(row, "height"));
-    width = width !== null ? width * k : null;
-    depth = depth !== null ? depth * k : null;
-    height = height !== null ? height * k : null;
-    const dimText = str(get(row, "dimensions"));
-    if (dimText && (width === null || depth === null || height === null)) {
-      const d = parseDimensions(dimText);
+    let width = parseMeasure(get(row, "width"), opts.unit);
+    let depth = parseMeasure(get(row, "depth"), opts.unit);
+    let height = parseMeasure(get(row, "height"), opts.unit);
+    // Misure mancanti: colonna "dimensioni", poi nome e descrizione (feed dei rivenditori).
+    for (const text of [str(get(row, "dimensions")), `${name} ${str(get(row, "description"))}`]) {
+      if (!text.trim() || (width !== null && depth !== null && height !== null)) continue;
+      const d = parseDimensions(text);
       width ??= d.width ?? null;
       depth ??= d.depth ?? null;
       height ??= d.height ?? null;
@@ -128,8 +136,10 @@ export function mapRows(rows: Record<string, unknown>[], mapping: ColumnMapping,
       errors.push({ row: line, message: `Misure mancanti per «${name}» (servono larghezza, profondità e altezza)` });
       return;
     }
-    const category = str(get(row, "category"));
-    const inferred = inferShape(`${name} ${category} ${str(get(row, "subcategory"))}`);
+    // Gerarchie dei feed ("Soggiorno > Divani > Angolari"): categoria e sottocategoria.
+    const [category = "", hierarchySub = ""] = str(get(row, "category")).split(/\s*[>›|]\s*/);
+    const subcategory = str(get(row, "subcategory")) || hierarchySub;
+    const inferred = inferShape(`${name} ${str(get(row, "category"))} ${subcategory}`);
     const code = str(get(row, "code"));
     const candidate = {
       id: `imp-${shortHash(`${opts.batch}|${code || name}|${opts.retailer}`)}`,
@@ -138,12 +148,12 @@ export function mapRows(rows: Record<string, unknown>[], mapping: ColumnMapping,
       code: code || undefined,
       name,
       category: category || categoryForShape(inferred.shape),
-      subcategory: str(get(row, "subcategory")) || undefined,
+      subcategory: subcategory || undefined,
       width: Math.round(width * 10) / 10,
       depth: Math.round(depth * 10) / 10,
       height: Math.round(height * 10) / 10,
       price: Math.round(price * 100) / 100,
-      currency: (str(get(row, "currency")) || opts.currency).toUpperCase().slice(0, 3),
+      currency: (str(get(row, "currency")) || currencyIn(priceRaw) || opts.currency).toUpperCase().slice(0, 3),
       color: str(get(row, "color")) || undefined,
       imageUrl: normalizeLink(str(get(row, "imageUrl"))),
       url: normalizeLink(str(get(row, "url"))),

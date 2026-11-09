@@ -3,6 +3,7 @@ import Papa from "papaparse";
 import { useEffect, useMemo, useState } from "react";
 import { Button, Modal, NumberField, SelectField, Segmented, TextField } from "@/components/ui/controls";
 import { SymbolSvg } from "@/components/items/ProductThumb";
+import { rowsFromXml } from "@/catalog/feedXml";
 import { IMPORT_FIELDS, autoDetectMapping, mapRows, normalizeLink, rowsFromJson, type ColumnMapping } from "@/catalog/importMapping";
 import type { LinkMetadata } from "@/catalog/linkMetadata";
 import { ShapeSchema, type MountType, type Shape } from "@/domain/schema";
@@ -323,7 +324,9 @@ function FileTab({ onSaved }: { onSaved: () => void }) {
     try {
       const textContent = await file.text();
       let parsedRows: Record<string, unknown>[];
-      if (file.name.toLowerCase().endsWith(".json")) parsedRows = rowsFromJson(JSON.parse(textContent));
+      const lower = file.name.toLowerCase();
+      if (lower.endsWith(".json")) parsedRows = rowsFromJson(JSON.parse(textContent));
+      else if (lower.endsWith(".xml") || /^\s*(<\?xml|<rss|<feed)/i.test(textContent)) parsedRows = rowsFromXml(textContent);
       else {
         const p = Papa.parse<Record<string, unknown>>(textContent, { header: true, skipEmptyLines: true, dynamicTyping: false });
         parsedRows = p.data;
@@ -361,13 +364,14 @@ function FileTab({ onSaved }: { onSaved: () => void }) {
       {!rows ? (
         <>
           <p className="text-sm text-graphite-soft">
-            Carica un catalogo o un feed in formato CSV (separatore virgola o punto e virgola, con intestazione) oppure JSON (un elenco
-            di prodotti). Le colonne vengono riconosciute dal nome e si possono correggere prima dell’import.
+            Carica un catalogo o un feed in formato CSV (separatore virgola o punto e virgola, con intestazione), JSON (un elenco di
+            prodotti) oppure XML (feed Google Merchant o delle reti di affiliazione). Le colonne vengono riconosciute dal nome e si
+            possono correggere prima dell’import.
           </p>
           <label className="paper-grid flex cursor-pointer flex-col items-center gap-2 rounded-[6px] border-2 border-dashed border-line-strong px-6 py-8 text-center">
-            <span className="text-[15px] font-medium">Scegli un file CSV o JSON</span>
+            <span className="text-[15px] font-medium">Scegli un file CSV, JSON o XML</span>
             <span className="text-sm text-muted">Servono almeno nome, prezzo e misure</span>
-            <input type="file" accept=".csv,.json,.txt,text/csv,application/json" className="hidden" onChange={(e) => void onFile(e.target.files?.[0])} />
+            <input type="file" accept=".csv,.json,.xml,.txt,text/csv,application/json,application/xml,text/xml" className="hidden" onChange={(e) => void onFile(e.target.files?.[0])} />
           </label>
           {batches.length > 0 && (
             <div>
@@ -490,7 +494,7 @@ export function AddProductsDialog({ onClose }: { onClose: () => void }) {
           onChange={setTab}
           options={[
             ...(FEATURES.productLink ? [{ value: "link" as const, label: "Da link" }] : []),
-            { value: "file", label: "Da file CSV o JSON" },
+            { value: "file", label: "Da file CSV, JSON o XML" },
             { value: "manual", label: "Inserimento manuale" },
           ]}
         />

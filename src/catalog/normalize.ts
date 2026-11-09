@@ -25,6 +25,19 @@ export function parseLocaleNumber(input: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * Misura in cm da un valore con unità facoltativa ("800 mm", "2,02 m", "47 in");
+ * senza unità si usa quella indicata.
+ */
+export function parseMeasure(input: unknown, defaultUnit: string): number | null {
+  if (typeof input === "number") return Number.isFinite(input) ? input * unitToCm(defaultUnit) : null;
+  if (typeof input !== "string") return null;
+  const m = /(-?\d[\d.,]*)\s*(mm|cm|m|in|inch|inches|")?(?![a-z])/i.exec(input.trim());
+  if (!m) return null;
+  const n = parseLocaleNumber(m[1]);
+  return n === null ? null : n * unitToCm(m[2] ?? defaultUnit);
+}
+
 /** Fattore di conversione in cm per un'unità di misura testuale o un codice UN/CEFACT. */
 export function unitToCm(unit: string | undefined | null): number {
   const u = (unit ?? "").trim().toLowerCase();

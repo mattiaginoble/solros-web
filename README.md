@@ -332,14 +332,15 @@ applied uniformly by `src/catalog/filter.ts`.
 Prices are always shown with their update date and a warning that they may
 have changed. The retailers in the demo catalogue are fictitious.
 
-### Importing a catalogue from CSV or JSON
+### Importing a catalogue from CSV, JSON or XML
 
-From the catalogue panel: **+ Aggiungi → Da file CSV o JSON** (Add → From CSV or
-JSON file).
+From the catalogue panel: **+ Aggiungi → Da file CSV, JSON o XML** (Add → From
+CSV, JSON or XML file).
 
-1. Choose the file: CSV with a header row (`,` or `;` separator) or JSON (a list
+1. Choose the file: CSV with a header row (`,` or `;` separator), JSON (a list
    of products, also inside `products`/`items`; nested fields such as
-   `offers.price` become columns).
+   `offers.price` become columns) or XML (Google Merchant RSS/Atom feeds with
+   `g:` fields, as provided by retailers and affiliate networks).
 2. Columns are recognised by name (Italian or English: *nome/name*,
    *prezzo/price*, *larghezza/width*, *sku/codice*…) and can be corrected.
    Instead of three dimension columns, a single *dimensioni* column such as
@@ -350,8 +351,15 @@ JSON file).
    batch (re-importing the same file updates the products; a batch can be
    deleted in one go).
 
-[`docs/esempio-catalogo.csv`](docs/esempio-catalogo.csv) is a ready-made
-example. Prices and numbers accept the Italian format (`1.149,00`).
+[`docs/esempio-catalogo.csv`](docs/esempio-catalogo.csv) and
+[`docs/esempio-feed.xml`](docs/esempio-feed.xml) are ready-made examples. Prices
+and numbers accept the Italian format (`1.149,00`). For feeds, the standard
+Google fields are recognised automatically: `title`, `price` and `sale_price`
+(the lower one is used), currency written in the price (`899.00 EUR`), `link`,
+`image_link`, `brand`, `id`, `product_type` (a `Soggiorno > Divani` hierarchy
+becomes category and subcategory), `product_width`/`product_length`/
+`product_height` with their unit (`800 mm`), or `size`; when dimensions are
+missing they are read from the title or description.
 
 ### Product from link and manual product
 

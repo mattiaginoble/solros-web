@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Esempio di feed prodotti in formato Google Merchant (RSS 2.0 con campi g:). Dati fittizi. -->
+<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
+  <channel>
+    <title>Negozio Esempio</title>
+    <link>https://negozio.example.com</link>
+    <description>Feed prodotti di esempio</description>
+    <item>
+      <g:id>NE-300</g:id>
+      <g:title>Divano 3 posti Aria</g:title>
+      <g:description>Divano sfoderabile in tessuto grigio perla.</g:description>
+      <g:link>https://negozio.example.com/divani/aria</g:link>
+      <g:price>899.00 EUR</g:price>
+      <g:brand>Negozio Esempio</g:brand>
+      <g:product_type>Soggiorno &gt; Divani</g:product_type>
+      <g:color>Grigio perla</g:color>
+      <g:product_width>214 cm</g:product_width>
+      <g:product_length>94 cm</g:product_length>
+      <g:product_height>86 cm</g:product_height>
+    </item>
+    <item>
+      <g:id>NE-410</g:id>
+      <g:title>Libreria Alta Faggio</g:title>
+      <g:description>Libreria a giorno con 5 ripiani, 80x30x200 cm.</g:description>
+      <g:link>https://negozio.example.com/librerie/alta-faggio</g:link>
+      <g:price>249,00 EUR</g:price>
+      <g:brand>Negozio Esempio</g:brand>
+      <g:product_type>Soggiorno &gt; Librerie</g:product_type>
+      <g:color>Faggio</g:color>
+    </item>
+    <item>
+      <g:id>NE-520</g:id>
+      <g:title>Tavolo allungabile Brezza</g:title>
+      <g:link>https://negozio.example.com/tavoli/brezza</g:link>
+      <g:price>429.00 EUR</g:price>
+      <g:sale_price>389.00 EUR</g:sale_price>
+      <g:brand>Negozio Esempio</g:brand>
+      <g:product_type>Sala da pranzo &gt; Tavoli</g:product_type>
+      <g:size>1600x900x750 mm</g:size>
+    </item>
+  </channel>
+</rss>
