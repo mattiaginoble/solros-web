@@ -7,9 +7,9 @@ a quote.
 The user interface is in Italian; button and menu names below are quoted as
 they appear in the app, with an English translation.
 
-**Online:** the full version can be deployed for free on Vercel with a Turso
-database, see [Deploying online](#deploying-online-vercel--turso). A static
-demo that runs entirely in the browser is published at
+**Online:** https://solros-web.vercel.app — the full version, on Vercel with a
+Turso database (see [Deploying online](#deploying-online-vercel--turso)). A
+static demo that runs entirely in the browser is also published at
 https://mattiaginoble.github.io/solros-web/ (see
 [Static version on GitHub Pages](#static-version-on-github-pages)).
 
@@ -47,7 +47,13 @@ database. Both have free plans. Visitors only need a browser.
 
 1. On Vercel, sign in with GitHub and choose **Add New → Project**, then import
    this repository. Next.js is detected automatically and the production branch
-   is the repository's default branch.
+   is the repository's default branch. Alternatively, without connecting the
+   repository to Vercel, the workflow
+   [`.github/workflows/vercel.yml`](.github/workflows/vercel.yml) deploys an
+   existing Vercel project on every push to the default branch: set the
+   project and team IDs in the workflow and add a Vercel token as the
+   `VERCEL_TOKEN` repository secret (this is how https://solros-web.vercel.app
+   is published).
 2. In the project, open **Storage** (or the Marketplace), add **Turso**, create
    a database in a European region (for example Frankfurt) and connect it to the
    project: Vercel adds `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` to the
