@@ -8,10 +8,10 @@ The user interface is in Italian; button and menu names below are quoted as
 they appear in the app, with an English translation.
 
 **Online:** https://solros-web.vercel.app — the full version, on Vercel with a
-Turso database (see [Deploying online](#deploying-online-vercel--turso)). A
-static demo that runs entirely in the browser is also published at
-https://mattiaginoble.github.io/solros-web/ (see
-[Static version on GitHub Pages](#static-version-on-github-pages)).
+Turso database, protected by a password (see
+[Deploying online](#deploying-online-vercel--turso)). A static build that runs
+entirely in the browser can also be produced (see
+[Static version](#static-version-browser-only)).
 
 ## Quick start
 
@@ -30,7 +30,7 @@ Useful commands:
 | --- | --- |
 | `npm run dev` | development server |
 | `npm run build` / `npm start` | production build and server |
-| `npm run build:static` | static export for GitHub Pages (into `out/`) |
+| `npm run build:static` | static export that runs in the browser (into `out/`) |
 | `npm test` | unit tests (Vitest) |
 | `npm run typecheck` | TypeScript type check |
 | `npm run lint` | ESLint |
@@ -84,8 +84,8 @@ characters) and redeploy. From then on:
 - *Esci* (Sign out) on the home page removes the cookie.
 
 The check runs in `src/proxy.ts` (Next.js Proxy). Without `SITE_PASSWORD`, for
-example locally, the site stays open. The static GitHub Pages build has no
-server and therefore no password.
+example locally, the site stays open. The static build has no server and
+therefore no password.
 
 Notes:
 
@@ -101,10 +101,11 @@ Notes:
   `FLOORPLAN_ANALYZER=claude` and `ANTHROPIC_API_KEY` to the Vercel environment
   variables (see [Floor plan import](#floor-plan-import)).
 
-## Static version on GitHub Pages
+## Static version (browser only)
 
-GitHub Pages only serves static files, so the published site is a build of the
-app that runs entirely in the browser:
+`npm run build:static` produces a build of the app that runs entirely in the
+browser and can be served by any static host (it was published on GitHub Pages
+until the site became private; it is no longer published):
 
 - projects and the products you add are stored in the browser (IndexedDB) and
   stay on that device: use *Esporta progetto (JSON)* (Export project) to keep
@@ -134,11 +135,6 @@ To try it locally:
 NEXT_PUBLIC_BASE_PATH=/solros-web npm run build:static
 # serve out/ under /solros-web/ with any static file server
 ```
-
-Deployment: the workflow [`.github/workflows/pages.yml`](.github/workflows/pages.yml)
-runs the tests, builds the static version and publishes it on every push to the
-default branch. Enable it once in the repository settings: **Settings → Pages →
-Build and deployment → Source: GitHub Actions**.
 
 ## Architecture
 

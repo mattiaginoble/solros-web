@@ -36,6 +36,14 @@ jobs:
         if: steps.token.outputs.ok == 'true'
         with:
           node-version: 22
+          cache: npm
+      # Si pubblica solo se i test passano.
+      - name: Install dependencies
+        if: steps.token.outputs.ok == 'true'
+        run: npm ci
+      - name: Unit tests
+        if: steps.token.outputs.ok == 'true'
+        run: npm test
       - name: Deploy to Vercel (production)
         if: steps.token.outputs.ok == 'true'
         run: npx --yes vercel@65.12.1 deploy --prod --yes --token "$VERCEL_TOKEN"
