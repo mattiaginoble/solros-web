@@ -1,0 +1,41 @@
+# Pubblica la versione completa su Vercel (progetto solros-web) a ogni push sul branch predefinito.
+# Richiede il secret del repository VERCEL_TOKEN (Settings → Secrets and variables → Actions).
+name: Vercel
+
+on:
+  push:
+    branches: [feature/configuratore-casa, main]
+  workflow_dispatch:
+
+concurrency:
+  group: vercel-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: team_BILgofMR8mAjLlwQUknrwb2m
+      VERCEL_PROJECT_ID: prj_vMdbv8GVSrjOLCVY3GcaS7x0KxBr
+      VERCEL_TELEMETRY_DISABLED: "1"
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Check token
+        id: token
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::warning::Secret VERCEL_TOKEN mancante: pubblicazione su Vercel saltata"
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v5
+        if: steps.token.outputs.ok == 'true'
+      - uses: actions/setup-node@v5
+        if: steps.token.outputs.ok == 'true'
+        with:
+          node-version: 22
+      - name: Deploy to Vercel (production)
+        if: steps.token.outputs.ok == 'true'
+        run: npx --yes vercel@65.12.1 deploy --prod --yes --token "$VERCEL_TOKEN"
