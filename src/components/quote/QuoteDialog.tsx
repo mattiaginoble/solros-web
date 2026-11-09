@@ -2,6 +2,8 @@
 import { useMemo, useState } from "react";
 import { Button, Modal, Segmented } from "@/components/ui/controls";
 import { isHttpUrl } from "@/domain/schema";
+import { itemsFromHouse } from "@/lib/cart/cart";
+import { updateCart } from "@/store/cart";
 import { quoteToCsv } from "@/lib/pricing/exportCsv";
 import { downloadText, quoteToPdf, slug } from "@/lib/pricing/exportPdf";
 import { formatMoney, formatPriceDate, formatTotals, quoteForHouse, type QuoteLine } from "@/lib/pricing/quote";
@@ -80,6 +82,17 @@ export function QuoteDialog({ onClose }: { onClose: () => void }) {
             title={links.length ? `Apre ${links.length} pagine prodotto in nuove schede` : "Nessun prodotto ha un link"}
           >
             Apri i link dei prodotti ({links.length})
+          </Button>
+          <Button
+            disabled={!quote.lines.length}
+            title="Aggiunge al carrello tutti gli arredi del progetto, raggruppati per negozio"
+            onClick={async () => {
+              const items = itemsFromHouse(house);
+              await updateCart((s) => s.addMany(items));
+              useEditor.getState().notify(`Aggiunti al carrello ${items.reduce((n, it) => n + it.quantity, 0)} prodotti: aprilo dal pannello Catalogo`);
+            }}
+          >
+            Aggiungi al carrello
           </Button>
           <Button disabled={!quote.lines.length} onClick={() => downloadText(quoteToCsv(quote, house.name), `preventivo-${slug(house.name)}.csv`, "text/csv;charset=utf-8")}>
             Esporta CSV

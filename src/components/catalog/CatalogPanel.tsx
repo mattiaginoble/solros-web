@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { CartLink } from "@/components/cart/CartLink";
 import { PRODUCT_DND_TYPE } from "@/components/editor2d/dnd";
 import { ProductThumb } from "@/components/items/ProductThumb";
 import { IconButton } from "@/components/ui/controls";
@@ -300,6 +302,12 @@ export function CatalogPanel() {
         Prezzi indicativi{latestDate ? ` aggiornati al ${formatPriceDate(latestDate)}` : ""}: possono essere cambiati, verifica sul
         sito del rivenditore prima dell’acquisto.
       </p>
+      <div className="flex items-center justify-between border-b border-line px-3 py-1.5 text-[12.5px]">
+        <Link href="/catalogo" className="font-medium text-prussian hover:underline">
+          Vetrina a tutta pagina
+        </Link>
+        <CartLink className="text-[12.5px]" />
+      </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {error && <p className="p-3 text-sm text-danger">{error}</p>}

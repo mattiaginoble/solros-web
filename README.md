@@ -336,6 +336,25 @@ model's safety filters refuse the image, is automatically retried on the
 recommended fallback model (`fallbacks: "default"`). Without this
 configuration only the local analyzer is available.
 
+## Shop window and cart
+
+- **Vetrina** (`/catalogo`, Shop window): the whole catalogue as a grid with
+  large photos (or the plan symbol when a product has no photo), text search,
+  filters by store, category and maximum price, sorting and *Carica altri*
+  (Load more). Each card has *Al carrello* (Add to cart) and, when the product
+  has a link, *Negozio* (Store).
+- **Carrello** (`/carrello`, Cart): products grouped by store with photo,
+  article code, quantity and totals. For each store:
+  - Amazon products (ASIN in the link) and Shopify stores (variant in the feed
+    id, `shopify_IT_<product>_<variant>`) get a button that fills the store's
+    own cart in one click; an affiliate `tag` in Amazon links is kept;
+  - other stores (IKEA included) get a button that opens the product pages,
+    plus *Copia elenco* (Copy list) with article codes and quantities;
+  - all the furniture of a project can be added at once, from the cart page or
+    from the quote dialog in the editor.
+- The cart is stored in the browser (`localStorage`), so it also works in the
+  static build; the logic lives in `src/lib/cart/cart.ts`.
+
 ## Product catalogue
 
 The catalogue is built around the `CatalogProvider` interface

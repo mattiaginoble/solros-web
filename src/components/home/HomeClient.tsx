@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Button, Modal } from "@/components/ui/controls";
 import { PlanPreview } from "@/components/ui/PlanPreview";
 import { LogoutButton } from "@/components/access/LogoutButton";
+import { CartLink } from "@/components/cart/CartLink";
 import { cloneHouseWithNewIds, createHouse } from "@/domain/factory";
 import { safeParseHouse } from "@/domain/schema";
 import { ROOM_TEMPLATES } from "@/domain/templates";
@@ -184,7 +185,13 @@ export function HomeClient() {
     <div className="min-h-dvh bg-paper">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5">
         <span className="text-[15px] font-semibold">Configuratore Casa</span>
-        <LogoutButton />
+        <nav aria-label="Sezioni" className="flex items-center gap-5">
+          <Link href="/catalogo" className="text-sm font-medium hover:text-prussian">
+            Vetrina
+          </Link>
+          <CartLink />
+          <LogoutButton />
+        </nav>
       </header>
       {STATIC_MODE && (
         <div className="mx-auto max-w-6xl px-5">
