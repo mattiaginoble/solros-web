@@ -53,6 +53,12 @@ export function Editor({ initialAction, topRight }: EditorProps) {
     else if (initialAction === "disegna") s.setTool("draw");
     else if (initialAction === "modelli") s.openDialog("templates");
     else if (initialAction === "planimetria") s.openDialog("import");
+    // L'azione vale solo all'arrivo dalla home: tolta dall'indirizzo, non si ripete ricaricando la pagina.
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("azione")) {
+      url.searchParams.delete("azione");
+      window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+    }
   }, [initialAction]);
 
   return (
