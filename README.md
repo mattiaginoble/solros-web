@@ -74,6 +74,10 @@ Notes:
   database.
 - Rate limits (product link reading, Claude analyses) are kept in memory, so on
   Vercel they apply to each running instance.
+- Maintenance routes (`/api/admin/projects`: list projects, delete one with
+  `?id=`) exist only while the `ADMIN_TOKEN` environment variable (at least 32
+  characters) is set, and require `Authorization: Bearer <ADMIN_TOKEN>`;
+  otherwise they answer 404.
 - To enable floor plan recognition with Claude online, add
   `FLOORPLAN_ANALYZER=claude` and `ANTHROPIC_API_KEY` to the Vercel environment
   variables (see [Floor plan import](#floor-plan-import)).
