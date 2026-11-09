@@ -15,6 +15,12 @@ export async function POST(req: Request) {
     if (!body.url || typeof body.url !== "string" || body.url.length > 2048) throw new HttpError(400, "Indirizzo mancante");
     const page = await fetchProductPage(body.url.trim(), user.id);
     const metadata = extractProductMetadata(page.html, page.url);
+    if (!metadata.isProduct) {
+      throw new HttpError(
+        422,
+        "Il link porta a una pagina senza dati di prodotto (per esempio una categoria o una ricerca): apri la pagina del singolo prodotto e copia quel link",
+      );
+    }
     return Response.json({ metadata, fetchedAt: new Date().toISOString() });
   } catch (err) {
     return handleError(err);

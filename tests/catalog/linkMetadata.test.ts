@@ -59,4 +59,56 @@ describe("metadati da link prodotto", () => {
     expect(m.url).toBe("https://x.example/a");
     expect(m.price).toBeUndefined();
   });
+
+  // Struttura dei dati strutturati delle pagine prodotto IKEA (valori di esempio).
+  const ikeaLike = (product: Record<string, unknown>) =>
+    `<html><head><meta property="og:type" content="product"><meta property="og:image" content="https://www.ikea.com/og.jpg">
+    <script type="application/ld+json">${JSON.stringify({ "@context": "https://schema.org/", "@type": "Product", brand: { "@type": "Brand", name: "IKEA" }, ...product })}</script></head></html>`;
+
+  it("legge le pagine prodotto con misure in testo e immagini ImageObject", () => {
+    const m = extractProductMetadata(
+      ikeaLike({
+        name: "YXSTABY Tavolino da gaming con rotelle - rovere/grigio",
+        sku: "906.200.05",
+        category: "Accessori da gaming",
+        width: "50 cm",
+        depth: "50 cm",
+        height: "55 cm",
+        image: [{ "@type": "ImageObject", contentUrl: "https://www.ikea.com/it/it/images/products/yxstaby__s5.jpg" }],
+        offers: { "@type": "Offer", price: "119", priceCurrency: "EUR" },
+      }),
+      "https://www.ikea.com/it/it/p/yxstaby-90620005/",
+    );
+    expect(m).toMatchObject({ isProduct: true, name: expect.stringContaining("YXSTABY"), code: "906.200.05", retailer: "IKEA", price: 119, currency: "EUR", width: 50, depth: 50, height: 55, shape: "table" });
+    expect(m.imageUrl).toBe("https://www.ikea.com/it/it/images/products/yxstaby__s5.jpg");
+  });
+
+  it("riconosce gli elettrodomestici da incasso anche se il nome contiene 'sottotavolo'", () => {
+    const m = extractProductMetadata(
+      ikeaLike({ name: "YTTERNÄS Congelatore sottotavolo - IKEA 500 integrato 94 l", width: "59.5 cm", depth: "54.5 cm", height: "82 cm", offers: { price: "369", priceCurrency: "EUR" } }),
+      "https://www.ikea.com/it/it/p/ytternaes-00568356/",
+    );
+    expect(m).toMatchObject({ shape: "fridge", width: 59.5, depth: 54.5, height: 82 });
+  });
+
+  it("usa il diametro nel nome come ingombro delle lampade", () => {
+    const m = extractProductMetadata(
+      ikeaLike({ name: "ZEBRASÄV Lampada a sospensione - bianco/plastica 46 cm", height: "24 cm", offers: { price: "4.95", priceCurrency: "EUR" } }),
+      "https://www.ikea.com/it/it/p/zebrasaev-10522481/",
+    );
+    expect(m).toMatchObject({ shape: "lamp-ceiling", mount: "ceiling", width: 46, depth: 46, height: 24, price: 4.95 });
+  });
+
+  it("segnala le pagine senza dati di prodotto (categorie, ricerche)", () => {
+    const html = `<html><head><title>BILLY Librerie</title><meta property="og:title" content="BILLY Librerie"><meta property="og:type" content="website"></head></html>`;
+    expect(extractProductMetadata(html, "https://www.ikea.com/it/it/cat/billy-58288/").isProduct).toBe(false);
+  });
+
+  it("non scambia l'altezza di una lampada da terra per un diametro; legge i tappeti LxP", () => {
+    const lamp = extractProductMetadata(ikeaLike({ name: "Lampada da terra - ottone 154 cm", offers: { price: "49" } }), "https://www.ikea.com/it/it/p/l-1/");
+    expect(lamp.shape).toBe("lamp-floor");
+    expect(lamp.width).toBeUndefined();
+    const rug = extractProductMetadata(ikeaLike({ name: "Tappeto pelo corto - grigio 160x230 cm", offers: { price: "79" } }), "https://www.ikea.com/it/it/p/t-1/");
+    expect(rug).toMatchObject({ shape: "rug", width: 160, depth: 230 });
+  });
 });

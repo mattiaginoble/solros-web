@@ -3,6 +3,7 @@
  * JSON-LD (schema.org Product/Offer) e, in mancanza, Open Graph e meta tag.
  * Il risultato precompila il modulo che l'utente conferma o corregge.
  */
+import { normalizeText } from "./filter";
 import { inferShape, categoryForShape, parseDimensions, parseLocaleNumber, unitToCm } from "./normalize";
 import { safeUrl } from "./importMapping";
 
@@ -22,6 +23,8 @@ export interface LinkMetadata {
   category?: string;
   shape?: string;
   mount?: string;
+  /** Vero se la pagina descrive un singolo prodotto (non una categoria o una ricerca). */
+  isProduct: boolean;
   /** Campi trovati e loro origine, per mostrare all'utente cosa verificare. */
   found: string[];
 }
@@ -90,7 +93,7 @@ function quantity(v: unknown): number | undefined {
 
 export function extractProductMetadata(html: string, pageUrl: string): LinkMetadata {
   const found: string[] = [];
-  const meta: LinkMetadata = { url: pageUrl, found };
+  const meta: LinkMetadata = { url: pageUrl, found, isProduct: false };
   const set = <K extends keyof LinkMetadata>(k: K, v: LinkMetadata[K] | undefined, source: string) => {
     if (v === undefined || v === null || v === "" || meta[k] !== undefined) return;
     meta[k] = v;
@@ -116,7 +119,8 @@ export function extractProductMetadata(html: string, pageUrl: string): LinkMetad
     set("description", text(product.description), "JSON-LD");
     set("category", text(product.category), "JSON-LD");
     const image = Array.isArray(product.image) ? product.image[0] : product.image;
-    set("imageUrl", safeUrl(text(typeof image === "object" && image ? (image as Json).url : image) ?? ""), "JSON-LD");
+    const imageUrl = typeof image === "object" && image ? ((image as Json).url ?? (image as Json).contentUrl) : image;
+    set("imageUrl", safeUrl(text(imageUrl) ?? ""), "JSON-LD");
     const offersRaw = product.offers;
     const offers = (Array.isArray(offersRaw) ? offersRaw : offersRaw ? [offersRaw] : []) as Json[];
     const offer = offers[0];
@@ -169,6 +173,26 @@ export function extractProductMetadata(html: string, pageUrl: string): LinkMetad
   const inferred = inferShape(`${meta.name ?? ""} ${meta.category ?? ""}`);
   meta.shape = inferred.shape;
   meta.mount = inferred.mount;
+  if (!meta.width && !meta.depth && meta.name) {
+    const name = normalizeText(meta.name).replace(/,(\d)/g, ".$1");
+    // Tappeti: "160x230 cm" nel nome.
+    const rug = inferred.shape === "rug" ? /(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\s*(mm|cm|m)?\b/.exec(name) : null;
+    if (rug) {
+      const k = unitToCm(rug[3] ?? "cm");
+      set("width", Number(rug[1]) * k, "nome");
+      set("depth", Number(rug[2]) * k, "nome");
+    }
+    // Lampade a sospensione o da parete e piante: la misura nel nome è il diametro.
+    if (/^(lamp-ceiling|lamp-wall|plant)$/.test(inferred.shape)) {
+      const last = [...name.matchAll(/(\d+(?:\.\d+)?)\s*(mm|cm)\b/g)].at(-1);
+      const diameter = last ? Number(last[1]) * unitToCm(last[2]) : undefined;
+      if (diameter && diameter !== meta.height) {
+        set("width", diameter, "nome (diametro)");
+        set("depth", diameter, "nome (diametro)");
+      }
+    }
+  }
+  meta.isProduct = !!product || /product/i.test(metaContent(html, "og:type") ?? "") || meta.price !== undefined;
   if (!meta.category || meta.category.length > 60) meta.category = categoryForShape(inferred.shape);
   if (meta.currency) meta.currency = meta.currency.toUpperCase().slice(0, 3);
   return meta;

@@ -26,6 +26,9 @@ describe("normalizzazione", () => {
     expect(inferShape("Divano letto 2 posti")).toEqual({ shape: "sofa", mount: "floor" });
     expect(inferShape("Pensile cucina 60")).toEqual({ shape: "cabinet", mount: "wall" });
     expect(inferShape("Lampadario in vetro")).toEqual({ shape: "lamp-ceiling", mount: "ceiling" });
+    expect(inferShape("Congelatore sottotavolo integrato").shape).toBe("fridge");
+    expect(inferShape("Tavolino da caffè").shape).toBe("table");
+    expect(inferShape("Tavolo allungabile").shape).toBe("table");
   });
 
   it("accetta solo URL http(s)", () => {

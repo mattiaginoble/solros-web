@@ -64,7 +64,8 @@ const SHAPE_RULES: [RegExp, Shape, MountType?][] = [
   [/poltron|armchair/, "armchair"],
   [/\bletto|\bbed\b|materasso/, "bed"],
   [/scrivania|desk/, "desk"],
-  [/tavolino|tavolo|table/, "table"],
+  // \b evita che "sottotavolo" (elettrodomestici da incasso) diventi un tavolo.
+  [/\btavolino|\btavolo|\btable/, "table"],
   [/sedia|sgabello|chair|stool/, "chair"],
   [/armadio|guardaroba|wardrobe/, "wardrobe"],
   [/libreria|scaffal|bookcase|shelf/, "shelf"],
@@ -72,7 +73,7 @@ const SHAPE_RULES: [RegExp, Shape, MountType?][] = [
   [/mobile tv|porta tv|tv unit|tv bench/, "tv-unit"],
   [/pensile/, "cabinet", "wall"],
   [/cassettiera|madia|credenza|mobile|cabinet|dresser|sideboard/, "cabinet"],
-  [/frigo|fridge|refrigerat/, "fridge"],
+  [/frigo|fridge|refrigerat|congelator|freezer/, "fridge"],
   [/lavastoviglie|dishwasher/, "dishwasher"],
   [/lavatrice|asciugatrice|washer|dryer/, "washer"],
   [/forno|oven/, "oven"],
