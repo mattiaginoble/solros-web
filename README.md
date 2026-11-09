@@ -59,6 +59,13 @@ database. Both have free plans. Visitors only need a browser.
    project: Vercel adds `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` to the
    environment variables. Alternatively, create the database on turso.tech and
    add the two variables by hand.
+
+   **Turn off database branching for Production.** The Turso integration can
+   create a copy (branch) of the database for every deployment. On Production
+   this means each new deployment starts from an empty copy and the data saved
+   before (projects, the store catalogue) stays behind in the old branch. In
+   **Storage → the Turso database → Projects**, edit the connection to the
+   project and keep branching, if at all, for Preview only.
 3. Deploy (or redeploy, if the first deployment ran before the database was
    connected).
 
