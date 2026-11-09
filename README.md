@@ -9,9 +9,9 @@ they appear in the app, with an English translation.
 
 **Online:** https://solros-web.vercel.app — the full version, on Vercel with a
 Turso database, protected by a password (see
-[Deploying online](#deploying-online-vercel--turso)). A static build that runs
-entirely in the browser can also be produced (see
-[Static version](#static-version-browser-only)).
+[Deploying online](#deploying-online-vercel--turso)). A public demo that runs
+entirely in the browser is published at https://mattiaginoble.github.io/solros-web/
+(see [Static version](#static-version-browser-only)).
 
 ## Quick start
 
@@ -104,8 +104,9 @@ Notes:
 ## Static version (browser only)
 
 `npm run build:static` produces a build of the app that runs entirely in the
-browser and can be served by any static host (it was published on GitHub Pages
-until the site became private; it is no longer published):
+browser and can be served by any static host. It is published as a public demo
+on GitHub Pages; visitors' projects stay in their own browsers, so none of your
+data is exposed:
 
 - projects and the products you add are stored in the browser (IndexedDB) and
   stay on that device: use *Esporta progetto (JSON)* (Export project) to keep
@@ -135,6 +136,11 @@ To try it locally:
 NEXT_PUBLIC_BASE_PATH=/solros-web npm run build:static
 # serve out/ under /solros-web/ with any static file server
 ```
+
+Deployment: the workflow [`.github/workflows/pages.yml`](.github/workflows/pages.yml)
+runs the tests, builds the static version and publishes it on every push to the
+default branch. Enable it once in the repository settings: **Settings → Pages →
+Build and deployment → Source: GitHub Actions**.
 
 ## Architecture
 
