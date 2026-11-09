@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Button, Modal } from "@/components/ui/controls";
 import { PlanPreview } from "@/components/ui/PlanPreview";
+import { LogoutButton } from "@/components/access/LogoutButton";
 import { cloneHouseWithNewIds, createHouse } from "@/domain/factory";
 import { safeParseHouse } from "@/domain/schema";
 import { ROOM_TEMPLATES } from "@/domain/templates";
@@ -183,6 +184,7 @@ export function HomeClient() {
     <div className="min-h-dvh bg-paper">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5">
         <span className="text-[15px] font-semibold">Configuratore Casa</span>
+        <LogoutButton />
       </header>
       {STATIC_MODE && (
         <div className="mx-auto max-w-6xl px-5">

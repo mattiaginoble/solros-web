@@ -68,6 +68,25 @@ to be run on the database. Every push to the default branch is deployed again.
 Without a Turso database the app answers with an explicit configuration error,
 because Vercel's file system does not persist data.
 
+### Private access
+
+To keep the site for yourself, add a `SITE_PASSWORD` environment variable to the
+Vercel project (Settings → Environment Variables, Production; at least 12
+characters) and redeploy. From then on:
+
+- pages redirect to `/accesso`, where the password is asked once; the browser
+  then keeps an HttpOnly cookie for a year, and API requests without it get 401;
+- the cookie is an HMAC of the password, so changing the password signs
+  everyone out;
+- wrong attempts are limited to 10 every 15 minutes per address;
+- read-only share links (`/share/…`) keep working for whoever you send them to,
+  since their token cannot be guessed;
+- *Esci* (Sign out) on the home page removes the cookie.
+
+The check runs in `src/proxy.ts` (Next.js Proxy). Without `SITE_PASSWORD`, for
+example locally, the site stays open. The static GitHub Pages build has no
+server and therefore no password.
+
 Notes:
 
 - `vercel.json` places the functions in Frankfurt (`fra1`), close to a European
