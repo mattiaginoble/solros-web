@@ -14,6 +14,7 @@ import { useEditor } from "@/store/editor";
 import { useCatalogVersion } from "./catalogVersion";
 
 const SOURCE_LABEL: Record<string, string> = {
+  store: "Negozi",
   demo: "Dati demo",
   import: "Importato",
   link: "Da link",
@@ -302,11 +303,14 @@ export function CatalogPanel() {
         Prezzi indicativi{latestDate ? ` aggiornati al ${formatPriceDate(latestDate)}` : ""}: possono essere cambiati, verifica sul
         sito del rivenditore prima dell’acquisto.
       </p>
-      <div className="flex items-center justify-between border-b border-line px-3 py-1.5 text-[12.5px]">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-3 py-1.5 text-[12.5px]">
         <Link href="/catalogo" className="font-medium text-prussian hover:underline">
           Vetrina a tutta pagina
         </Link>
-        <CartLink className="text-[12.5px]" />
+        <Link href="/configuratori" className="font-medium text-prussian hover:underline">
+          Configuratori IKEA
+        </Link>
+        <CartLink className="ml-auto text-[12.5px]" />
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">

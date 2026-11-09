@@ -82,23 +82,28 @@ export function ShopPage() {
     <div className="min-h-dvh bg-paper">
       <header className="sticky top-0 z-10 border-b border-line bg-paper/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-4">
-          <Link href="/" className="text-[15px] font-semibold hover:text-prussian">
-            ← Configuratore Casa
+          <Link href="/" className="whitespace-nowrap text-[15px] font-semibold hover:text-prussian">
+            ← <span className="hidden sm:inline">Configuratore </span>Casa
           </Link>
-          <Link
-            href="/carrello"
-            className="inline-flex h-9 items-center gap-2 rounded-[5px] border border-line-strong bg-panel px-3 text-sm font-medium hover:border-prussian"
-          >
-            Carrello
-            <span className="min-w-6 rounded-full bg-prussian px-1.5 text-center text-xs text-white tabular-nums">{cartCount}</span>
-          </Link>
+          <div className="flex items-center gap-4 whitespace-nowrap">
+            <Link href="/configuratori" className="text-sm font-medium hover:text-prussian" aria-label="Configuratori IKEA">
+              Configuratori<span className="hidden sm:inline"> IKEA</span>
+            </Link>
+            <Link
+              href="/carrello"
+              className="inline-flex h-9 items-center gap-2 rounded-[5px] border border-line-strong bg-panel px-3 text-sm font-medium hover:border-prussian"
+            >
+              Carrello
+              <span className="min-w-6 rounded-full bg-prussian px-1.5 text-center text-xs text-white tabular-nums">{cartCount}</span>
+            </Link>
+          </div>
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-5 pb-20 pt-6">
         <h1 className="text-[clamp(1.8rem,4vw,2.6rem)] font-semibold tracking-[-0.02em]">Vetrina</h1>
         <p className="mt-1 max-w-2xl text-sm text-graphite-soft">
-          Tutti i prodotti del catalogo: demo, cataloghi e feed importati, prodotti salvati da link. Aggiungili al carrello per comprarli
-          nei negozi, o usali nei progetti dal pannello Catalogo dell’editor.
+          Tutti i prodotti del catalogo: prodotti IKEA aggiornati ogni giorno, demo, cataloghi e feed importati, prodotti salvati da
+          link. Aggiungili al carrello per comprarli nei negozi, o usali nei progetti dal pannello Catalogo dell’editor.
         </p>
 
         <div className="mt-5 flex flex-col gap-3 rounded-[6px] border border-line-strong bg-panel p-4">

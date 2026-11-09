@@ -1,6 +1,6 @@
 import "server-only";
 import type { Product as ProductRow } from "@/generated/prisma/client";
-import { ProductSchema, type Product, ShapeSchema } from "@/domain/schema";
+import { ProductSchema, ProductSourceSchema, type Product, ShapeSchema } from "@/domain/schema";
 
 /** Converte una riga del database nel tipo di dominio Product. */
 export function rowToProduct(r: ProductRow): Product {
@@ -15,7 +15,7 @@ export function rowToProduct(r: ProductRow): Product {
   const shape = ShapeSchema.safeParse(r.shape);
   return {
     id: r.id,
-    source: (["demo", "import", "link", "manual"].includes(r.source) ? r.source : "manual") as Product["source"],
+    source: ProductSourceSchema.safeParse(r.source).data ?? "manual",
     retailer: r.retailer,
     code: r.code ?? undefined,
     name: r.name,

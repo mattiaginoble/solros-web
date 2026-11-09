@@ -4,13 +4,14 @@ import { DemoProvider } from "./providers/demo";
 import { FileImportProvider } from "./providers/fileImport";
 import { ManualProvider } from "./providers/manual";
 import { ProductLinkProvider } from "./providers/productLink";
+import { StoreProvider } from "./providers/store";
 import type { CatalogContext, CatalogProvider, CatalogQuery } from "./types";
 
 /**
  * Registro dei provider attivi. Per aggiungere una nuova sorgente basta
  * implementare CatalogProvider e inserirla qui (vedi README).
  */
-export const CATALOG_PROVIDERS: CatalogProvider[] = [DemoProvider, FileImportProvider, ProductLinkProvider, ManualProvider];
+export const CATALOG_PROVIDERS: CatalogProvider[] = [StoreProvider, DemoProvider, FileImportProvider, ProductLinkProvider, ManualProvider];
 
 export async function listAllProducts(ctx: CatalogContext, providers = CATALOG_PROVIDERS) {
   const lists = await Promise.all(providers.map((p) => p.list(ctx).catch(() => [])));

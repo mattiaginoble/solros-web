@@ -19,7 +19,7 @@ export type Vec2 = z.infer<typeof Vec2Schema>;
 export const MountTypeSchema = z.enum(["floor", "wall", "ceiling"]);
 export type MountType = z.infer<typeof MountTypeSchema>;
 
-export const ProductSourceSchema = z.enum(["demo", "import", "link", "manual"]);
+export const ProductSourceSchema = z.enum(["store", "demo", "import", "link", "manual"]);
 export type ProductSource = z.infer<typeof ProductSourceSchema>;
 
 /** Forme parametriche disponibili per il 3D quando manca un modello glTF. */

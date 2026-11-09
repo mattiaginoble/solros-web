@@ -1,6 +1,7 @@
 import { after } from "next/server";
 import { z } from "zod";
 import { searchCatalog } from "@/catalog/service";
+import { ProductSourceSchema } from "@/domain/schema";
 import { handleError, HttpError, zodDetails } from "@/lib/server/http";
 import { refreshStaleFeeds } from "@/lib/server/feeds";
 import { findCurrentUser } from "@/lib/server/user";
@@ -17,7 +18,7 @@ const QuerySchema = z.object({
   maxDepth: num,
   maxHeight: num,
   color: z.string().max(60).optional(),
-  source: z.array(z.enum(["demo", "import", "link", "manual"])).optional(),
+  source: z.array(ProductSourceSchema).optional(),
   mount: z.enum(["floor", "wall", "ceiling"]).optional(),
   sort: z.enum(["relevance", "price-asc", "price-desc", "name"]).optional(),
   limit: z.coerce.number().int().min(1).max(200).optional(),

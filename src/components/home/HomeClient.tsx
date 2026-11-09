@@ -183,11 +183,14 @@ export function HomeClient() {
 
   return (
     <div className="min-h-dvh bg-paper">
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5">
-        <span className="text-[15px] font-semibold">Configuratore Casa</span>
-        <nav aria-label="Sezioni" className="flex items-center gap-5">
+      <header className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-5 gap-y-2 px-5 py-5">
+        <span className="whitespace-nowrap text-[15px] font-semibold">Configuratore Casa</span>
+        <nav aria-label="Sezioni" className="flex items-center gap-4 whitespace-nowrap sm:gap-5">
           <Link href="/catalogo" className="text-sm font-medium hover:text-prussian">
             Vetrina
+          </Link>
+          <Link href="/configuratori" className="text-sm font-medium hover:text-prussian" aria-label="Configuratori IKEA">
+            Configuratori<span className="hidden sm:inline"> IKEA</span>
           </Link>
           <CartLink />
           <LogoutButton />

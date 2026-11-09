@@ -40,8 +40,8 @@ describe("accesso riservato", () => {
 
   it("esclude dal controllo accesso, link di condivisione e file statici", () => {
     const re = new RegExp(`^${config.matcher[0]}$`);
-    for (const p of ["/", "/editor/abc", "/api/projects", "/catalogo", "/pdf.worker.min.mjs"]) expect(re.test(p), p).toBe(true);
-    for (const p of ["/accesso", "/api/access", "/share/abc123", "/api/share/abc123", "/_next/static/x.js", "/icon.svg", "/esempio-feed.xml"]) {
+    for (const p of ["/", "/editor/abc", "/api/projects", "/catalogo", "/configuratori", "/api/admin/projects", "/pdf.worker.min.mjs"]) expect(re.test(p), p).toBe(true);
+    for (const p of ["/accesso", "/api/access", "/share/abc123", "/api/share/abc123", "/api/cron/store-sync", "/_next/static/x.js", "/icon.svg", "/esempio-feed.xml"]) {
       expect(re.test(p), p).toBe(false);
     }
   });

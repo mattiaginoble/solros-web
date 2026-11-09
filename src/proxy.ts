@@ -24,7 +24,8 @@ export async function proxy(req: NextRequest) {
 export const config = {
   matcher: [
     // Tutto tranne: pagina e API di accesso, link di condivisione in sola lettura,
-    // file statici di Next, icona e feed d'esempio pubblico.
-    "/((?!accesso|api/access|api/share/|share/|_next/static|_next/image|icon\\.svg|favicon\\.ico|robots\\.txt|esempio-feed\\.xml).*)",
+    // aggiornamenti pianificati (protetti da CRON_SECRET), file statici di Next,
+    // icona e feed d'esempio pubblico.
+    "/((?!accesso|api/access|api/share/|share/|api/cron/|_next/static|_next/image|icon\\.svg|favicon\\.ico|robots\\.txt|esempio-feed\\.xml).*)",
   ],
 };

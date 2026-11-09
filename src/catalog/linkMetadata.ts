@@ -91,6 +91,67 @@ function quantity(v: unknown): number | undefined {
   return undefined;
 }
 
+/** Prezzo attuale fra le specifiche di prezzo (si scartano prezzo barrato e di listino). */
+function currentPriceSpec(value: unknown): Json | undefined {
+  const specs = (Array.isArray(value) ? value : value ? [value] : []).filter((v): v is Json => !!v && typeof v === "object");
+  return specs.find((s) => !/strikethrough|listprice|msrp/i.test(String(s.priceType ?? ""))) ?? specs[0];
+}
+
+const MEASURE_LABEL = /<(span|dt|th|div)\b[^>]*class=["']([^"']*)["'][^>]*>([^<]{1,60})<\/\1>\s*<(?:span|dd|td|div)\b[^>]*>([^<]{1,40})</gi;
+
+const MEASURE_KEYS: Record<string, string> = {
+  larghezza: "width",
+  width: "width",
+  profondita: "depth",
+  depth: "depth",
+  altezza: "height",
+  height: "height",
+  lunghezza: "length",
+  length: "length",
+  diametro: "diameter",
+  diameter: "diameter",
+};
+
+/**
+ * Misure principali dalla scheda «Misure» della pagina (per esempio IKEA:
+ * measurement-name / measurement-value). Si leggono solo le etichette esatte,
+ * non quelle di sedile, pacco o imballo.
+ */
+export function measurementList(html: string, shape?: string): { width?: number; depth?: number; height?: number } {
+  const values: Record<string, number> = {};
+  const fallback: Record<string, number> = {};
+  for (const m of html.matchAll(MEASURE_LABEL)) {
+    const cls = m[2].toLowerCase();
+    if (!/measure|dimension|misur/.test(cls) || /package|pacco|imball/.test(cls)) continue;
+    const label = normalizeText(decodeEntities(m[3])).replace(/[:\s]+$/, "").trim();
+    const value = /^(\d+(?:[.,]\d+)?)\s*(mm|cm|m)\b/i.exec(decodeEntities(m[4]).trim());
+    if (!value) continue;
+    const cm = Math.round(Number(value[1].replace(",", ".")) * unitToCm(value[2].toLowerCase()) * 10) / 10;
+    if (!(cm > 0)) continue;
+    const key = MEASURE_KEYS[label];
+    if (key) values[key] ??= cm;
+    // «Altezza, inclusi cuscini schienale», «Profondità minima»: solo se manca l'etichetta semplice.
+    const variant = /^(larghezza|profondita|altezza|lunghezza|diametro),? (?:minima|inclus\w*|con)\b/.exec(label);
+    if (variant) fallback[MEASURE_KEYS[variant[1]]] ??= cm;
+  }
+  for (const [k, v] of Object.entries(fallback)) values[k] ??= v;
+  let { width, depth } = values;
+  const { height, length, diameter } = values;
+  if (length !== undefined) {
+    if (width === undefined) width = length;
+    else if (depth === undefined) {
+      // Letti e tappeti: la lunghezza è la profondità; tavoli e altro: il lato lungo è la larghezza.
+      if (shape === "bed" || shape === "rug") depth = length;
+      else [width, depth] = [Math.max(width, length), Math.min(width, length)];
+    }
+  }
+  if (diameter !== undefined) {
+    width ??= diameter;
+    depth ??= diameter;
+  }
+  return { width, depth, height };
+}
+
 export function extractProductMetadata(html: string, pageUrl: string): LinkMetadata {
   const found: string[] = [];
   const meta: LinkMetadata = { url: pageUrl, found, isProduct: false };
@@ -125,9 +186,10 @@ export function extractProductMetadata(html: string, pageUrl: string): LinkMetad
     const offers = (Array.isArray(offersRaw) ? offersRaw : offersRaw ? [offersRaw] : []) as Json[];
     const offer = offers[0];
     if (offer) {
-      const price = parseLocaleNumber(offer.price ?? offer.lowPrice ?? (offer.priceSpecification as Json | undefined)?.price);
+      const spec = currentPriceSpec(offer.priceSpecification);
+      const price = parseLocaleNumber(offer.price ?? offer.lowPrice ?? spec?.price);
       set("price", price ?? undefined, "JSON-LD");
-      set("currency", text(offer.priceCurrency ?? (offer.priceSpecification as Json | undefined)?.priceCurrency), "JSON-LD");
+      set("currency", text(offer.priceCurrency ?? spec?.priceCurrency), "JSON-LD");
       set("retailer", text(offer.seller), "JSON-LD");
     }
     set("width", quantity(product.width), "JSON-LD");
@@ -156,7 +218,15 @@ export function extractProductMetadata(html: string, pageUrl: string): LinkMetad
     set("name", title ? decodeEntities(title).replace(/\s+/g, " ").trim() : undefined, "titolo pagina");
   }
 
-  // 3. Misure dal testo della descrizione
+  // 3. Scheda delle misure della pagina (coppie etichetta / valore)
+  if (!meta.width || !meta.depth || !meta.height) {
+    const m = measurementList(html, inferShape(`${meta.name ?? ""} ${meta.category ?? ""}`).shape);
+    set("width", m.width, "scheda misure");
+    set("depth", m.depth, "scheda misure");
+    set("height", m.height, "scheda misure");
+  }
+
+  // 4. Misure dal testo della descrizione
   if (meta.description && (!meta.width || !meta.depth || !meta.height)) {
     const d = parseDimensions(meta.description);
     set("width", d.width, "descrizione");

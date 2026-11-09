@@ -105,3 +105,22 @@ model CatalogFeed {
 
   @@unique([ownerId, name])
 }
+
+/// Pagina prodotto di un negozio riletta periodicamente (catalogo «Negozi»).
+model StorePage {
+  url           String    @id
+  retailer      String
+  category      String
+  subcategory   String?
+  /// Prodotto creato dalla pagina (Product.id), se i dati erano completi
+  productId     String?
+  /// pending | ok | incomplete | removed | robots | error
+  status        String    @default("pending")
+  /// Esito dell'ultima lettura, per la diagnosi
+  note          String?
+  lastCheckedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([lastCheckedAt])
+}

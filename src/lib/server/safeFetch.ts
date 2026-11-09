@@ -138,7 +138,7 @@ interface RawResponse {
 }
 
 /** Una singola GET senza seguire i redirect, con limite di tempo totale e di dimensione. */
-function requestOnce(url: URL, accept: string, maxBytes: number, timeoutMs: number): Promise<RawResponse> {
+function requestOnce(url: URL, accept: string, maxBytes: number, timeoutMs: number, userAgent = USER_AGENT): Promise<RawResponse> {
   return new Promise((resolve, reject) => {
     let settled = false;
     const settle = (fn: () => void) => {
@@ -155,7 +155,7 @@ function requestOnce(url: URL, accept: string, maxBytes: number, timeoutMs: numb
         agent: false,
         lookup: publicLookup,
         headers: {
-          "User-Agent": USER_AGENT,
+          "User-Agent": userAgent,
           Accept: accept,
           "Accept-Language": "it-IT,it;q=0.9,en;q=0.6",
           "Accept-Encoding": "gzip, br",
@@ -216,13 +216,13 @@ export async function guardedGet(
   start: URL,
   accept: string,
   maxBytes: number,
-  opts: { timeoutMs?: number } = {},
+  opts: { timeoutMs?: number; userAgent?: string } = {},
 ): Promise<{ url: URL; status: number; body: string; type: string; bytes: Buffer; truncated: boolean }> {
   let url = start;
   for (let i = 0; i < MAX_REQUESTS; i++) {
     let res: RawResponse;
     try {
-      res = await requestOnce(url, accept, maxBytes, opts.timeoutMs ?? TIMEOUT_MS);
+      res = await requestOnce(url, accept, maxBytes, opts.timeoutMs ?? TIMEOUT_MS, opts.userAgent);
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
       if (code === "EPRIVATE") throw new HttpError(400, "Indirizzo non ammesso");

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractProductMetadata } from "@/catalog/linkMetadata";
+import { extractProductMetadata, measurementList } from "@/catalog/linkMetadata";
 
 const jsonLdPage = `<!doctype html><html><head>
 <title>Divano letto | Negozio</title>
@@ -110,5 +110,58 @@ describe("metadati da link prodotto", () => {
     expect(lamp.width).toBeUndefined();
     const rug = extractProductMetadata(ikeaLike({ name: "Tappeto pelo corto - grigio 160x230 cm", offers: { price: "79" } }), "https://www.ikea.com/it/it/p/t-1/");
     expect(rug).toMatchObject({ shape: "rug", width: 160, depth: 230 });
+  });
+
+  it("prende il prezzo attuale da una lista di specifiche, non quello barrato", () => {
+    const m = extractProductMetadata(
+      ikeaLike({
+        name: "KIVIK Divano a 2 posti - beige",
+        width: "190 cm",
+        depth: "95 cm",
+        height: "83 cm",
+        offers: {
+          "@type": "Offer",
+          priceSpecification: [
+            { "@type": "UnitPriceSpecification", price: "399", priceCurrency: "EUR", priceType: "https://schema.org/StrikethroughPrice" },
+            { "@type": "UnitPriceSpecification", price: "299", priceCurrency: "EUR" },
+          ],
+        },
+      }),
+      "https://www.ikea.com/it/it/p/kivik-s09440599/",
+    );
+    expect(m).toMatchObject({ price: 299, currency: "EUR", width: 190, depth: 95, height: 83 });
+  });
+
+  it("legge le misure dalla scheda «Misure» quando mancano nei dati strutturati", () => {
+    const row = (name: string, value: string) =>
+      `<li class="pipf-measurements-tab__measurement-row"><span class="pipf-measurements-tab__measurement-name">${name}\n</span><span class="pipf-measurements-tab__measurement-value">${value}</span></li>`;
+    const pkg = `<li class="pipf-measurements-tab__package-measurement-item"><span class="pipf-measurements-tab__package-measurement-label">Larghezza: </span>94 cm</li>`;
+    const html = ikeaLike({ name: "HEMNES Struttura letto - bianco 160x200 cm", offers: { price: "279", priceCurrency: "EUR" } }).replace(
+      "</html>",
+      `<body><ul>${row("Larghezza sedile", "140 cm")}${row("Lunghezza", "211 cm")}${row("Larghezza", "174 cm")}${row("Altezza testiera", "112 cm")}${row("Altezza", "66 cm")}${pkg}</ul></body></html>`,
+    );
+    const m = extractProductMetadata(html, "https://www.ikea.com/it/it/p/hemnes-1/");
+    expect(m).toMatchObject({ shape: "bed", width: 174, depth: 211, height: 66, price: 279 });
+    expect(m.found).toContain("depth (scheda misure)");
+  });
+
+  it("scheda misure: lato lungo come larghezza per i tavoli, diametro, millimetri e varianti delle etichette", () => {
+    const html = (pairs: [string, string][]) =>
+      pairs.map(([n, v]) => `<span class="product-dimensions__name">${n}:</span><span class="product-dimensions__value">${v}</span>`).join("");
+    expect(measurementList(html([["Larghezza", "80 cm"], ["Lunghezza", "140 cm"], ["Altezza", "75 cm"]]), "table")).toEqual({ width: 140, depth: 80, height: 75 });
+    expect(measurementList(html([["Diametro", "90 cm"], ["Altezza", "74 cm"]]), "table")).toEqual({ width: 90, depth: 90, height: 74 });
+    expect(measurementList(html([["Larghezza", "600 mm"]]))).toEqual({ width: 60, depth: undefined, height: undefined });
+    // Varianti solo in mancanza dell'etichetta semplice: altezza con i cuscini, profondità minima.
+    expect(
+      measurementList(html([["Altezza schienale", "70 cm"], ["Altezza, inclusi cuscini schienale", "82 cm"], ["Profondità", "93 cm"], ["Larghezza", "199 cm"]]), "sofa"),
+    ).toEqual({ width: 199, depth: 93, height: 82 });
+    expect(measurementList(html([["Larghezza", "61 cm"], ["Profondità minima", "166 cm"], ["Profondità massima", "270 cm"], ["Altezza", "180 cm"]]))).toEqual({
+      width: 61,
+      depth: 166,
+      height: 180,
+    });
+    expect(measurementList(html([["Altezza, inclusi cuscini schienale", "82 cm"], ["Altezza", "80 cm"]])).height).toBe(80);
+    // Classi senza riferimenti alle misure: ignorate.
+    expect(measurementList(`<span class="title">Larghezza</span><span>10 cm</span>`)).toEqual({ width: undefined, depth: undefined, height: undefined });
   });
 });

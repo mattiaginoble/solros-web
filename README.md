@@ -93,6 +93,9 @@ Notes:
   database.
 - Rate limits (product link reading, Claude analyses) are kept in memory, so on
   Vercel they apply to each running instance.
+- `CRON_SECRET` (at least 16 random characters) enables the daily update of
+  the store catalogue (see
+  [Store catalogue](#store-catalogue-ikea-updated-every-day)).
 - Maintenance routes (`/api/admin/projects`: list projects, delete one with
   `?id=`) exist only while the `ADMIN_TOKEN` environment variable (at least 32
   characters) is set, and require `Authorization: Bearer <ADMIN_TOKEN>`;
@@ -364,6 +367,7 @@ applied uniformly by `src/catalog/filter.ts`.
 
 | Provider | Source |
 | --- | --- |
+| `StoreProvider` | real IKEA products (photo, price, dimensions), re-read every day by the server (see below) |
 | `DemoProvider` | ~80 generic products with indicative prices, marked "dati demo" (demo data) |
 | `FileImportProvider` | catalogues and feeds imported from CSV/JSON |
 | `ProductLinkProvider` | products pre-filled from the link of a product page |
@@ -371,6 +375,37 @@ applied uniformly by `src/catalog/filter.ts`.
 
 Prices are always shown with their update date and a warning that they may
 have changed. The retailers in the demo catalogue are fictitious.
+
+### Store catalogue (IKEA), updated every day
+
+The *Negozi* (Stores) source holds real IKEA Italy products: about 20 per
+furniture type (sofas, armchairs, TV units, bookcases, coffee tables, rugs,
+beds, wardrobes, chests of drawers, bedside tables, tables, chairs,
+sideboards, desks, bathroom cabinets, lamps, appliances).
+
+- The repository only contains the list of product page addresses,
+  `src/catalog/store/ikea-links.json`, chosen from IKEA's public sitemaps by
+  `node scripts/store-links-ikea.mjs [products-per-type]`. Names, prices,
+  dimensions and photos are read from the pages and stored in the database.
+- `src/lib/server/storeSync.ts` re-reads the pages one at a time: robots.txt is
+  checked first (if it cannot be read, nothing is fetched), there is a pause of
+  2 seconds between requests, and the run stops early if the site answers 429
+  or 503. Each page is read again after 2 days (14 days when the page lacks
+  data, 30 when the product was withdrawn). A product whose page disappears
+  or now redirects to a category is removed from the catalogue.
+- Data come from the page's structured data (JSON-LD) and, when dimensions are
+  missing there, from the page's *Misure* (Measurements) section.
+- On Vercel, `vercel.json` schedules `/api/cron/store-sync` twice a day; each
+  run reads up to 100 pages within the 5-minute function limit. The route is
+  closed unless the `CRON_SECRET` environment variable is set: Vercel then
+  sends it as `Authorization: Bearer <CRON_SECRET>`. With `?stato=1` the route
+  only returns a summary (pages by status, products, last read).
+- The static build has no server, so it has no store catalogue.
+
+The **Configuratori IKEA** page (`/configuratori`) links to IKEA's own
+planners (kitchens, PAX and PLATSA wardrobes, BESTÅ, sofas, bathroom, office,
+and more), grouped by room; the kitchen configurator links to the IKEA kitchen
+planner as well. The list is in `src/catalog/ikeaPlanners.ts`.
 
 ### Importing a catalogue from CSV, JSON or XML
 

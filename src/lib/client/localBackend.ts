@@ -28,8 +28,8 @@ interface StoredProduct {
 }
 
 const MAX_IMPORT = 5000;
-/** Sorgenti disponibili senza server (niente prodotti da link). */
-const STATIC_SOURCES = SOURCE_ORDER.filter((s) => s !== "link");
+/** Sorgenti disponibili senza server (niente prodotti da link né catalogo dei negozi). */
+const STATIC_SOURCES = SOURCE_ORDER.filter((s) => s !== "link" && s !== "store");
 
 function unavailable(what: string): never {
   throw new ApiError(501, `${what} non è disponibile nella versione statica: avvia l'app con il server per usarla`);

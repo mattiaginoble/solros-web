@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
+import { ikeaPlanner } from "@/catalog/ikeaPlanners";
 import { Button, Modal, NumberField, SelectField, Segmented } from "@/components/ui/controls";
 import type { KitchenConfig, KitchenModule, Room } from "@/domain/schema";
 import {
@@ -17,6 +18,9 @@ import { FRONTS, FRONT_BY_ID, HANDLES, WORKTOPS, WORKTOP_BY_ID } from "@/kitchen
 import { edgeLength } from "@/lib/geometry/polygon";
 import { aggregateLines, formatMoney, formatPriceDate, lineFromItem, sumTotals } from "@/lib/pricing/quote";
 import { findRoom, useEditor } from "@/store/editor";
+
+const KITCHEN_PLANNER = ikeaPlanner("kitchen-planner");
+const KNOXHULT_PLANNER = ikeaPlanner("knoxhult-planner");
 
 /** Parete iniziale: la più lunga, fino alla prima porta. */
 function defaultChoices(room: Room): KitchenChoices {
@@ -216,6 +220,18 @@ export function KitchenDialog({ onClose }: { onClose: () => void }) {
         </>
       }
     >
+      <p className="mb-4 rounded-[5px] border border-line bg-panel-sunk px-3 py-2 text-[12.5px] leading-snug text-graphite-soft">
+        Qui componi una cucina indicativa per la pianta e il preventivo. Per una cucina IKEA con tutte le varianti di ante, maniglie ed
+        elettrodomestici usa il{" "}
+        <a href={KITCHEN_PLANNER?.url} target="_blank" rel="noopener noreferrer" className="font-medium text-prussian underline">
+          progettista di cucine IKEA
+        </a>{" "}
+        o il{" "}
+        <a href={KNOXHULT_PLANNER?.url} target="_blank" rel="noopener noreferrer" className="font-medium text-prussian underline">
+          configuratore KNOXHULT
+        </a>
+        , poi riporta qui le misure.
+      </p>
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
         <div className="flex flex-col gap-4">
           <Segmented<"linear" | "corner">
