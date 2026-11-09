@@ -1,13 +1,12 @@
 "use client";
-import Papa from "papaparse";
 import { useEffect, useMemo, useState } from "react";
 import { Button, Modal, NumberField, SelectField, Segmented, TextField } from "@/components/ui/controls";
 import { SymbolSvg } from "@/components/items/ProductThumb";
-import { rowsFromXml } from "@/catalog/feedXml";
-import { IMPORT_FIELDS, autoDetectMapping, mapRows, normalizeLink, rowsFromJson, type ColumnMapping } from "@/catalog/importMapping";
+import { headersOf, rowsFromFeedText } from "@/catalog/feedRows";
+import { IMPORT_FIELDS, autoDetectMapping, mapRows, normalizeLink, type ColumnMapping } from "@/catalog/importMapping";
 import type { LinkMetadata } from "@/catalog/linkMetadata";
 import { ShapeSchema, type MountType, type Shape } from "@/domain/schema";
-import { api } from "@/lib/client/api";
+import { api, type ImportBatch } from "@/lib/client/api";
 import { FEATURES } from "@/lib/client/mode";
 import { formatMoney } from "@/lib/pricing/quote";
 import { useEditor } from "@/store/editor";
@@ -300,7 +299,12 @@ function FileTab({ onSaved }: { onSaved: () => void }) {
   const [batch, setBatch] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [batches, setBatches] = useState<{ batch: string; count: number }[]>([]);
+  const [batches, setBatches] = useState<ImportBatch[]>([]);
+  // Feed da indirizzo: le righe sono un'anteprima, il server scarica e aggiorna il feed completo.
+  const [feedUrl, setFeedUrl] = useState("");
+  const [feedSource, setFeedSource] = useState<string | null>(null);
+  const [feedTotal, setFeedTotal] = useState(0);
+  const [refreshing, setRefreshing] = useState<string | null>(null);
   const loadBatches = () =>
     api
       .listImportBatches()
@@ -322,23 +326,38 @@ function FileTab({ onSaved }: { onSaved: () => void }) {
     if (!file) return;
     setError(null);
     try {
-      const textContent = await file.text();
-      let parsedRows: Record<string, unknown>[];
-      const lower = file.name.toLowerCase();
-      if (lower.endsWith(".json")) parsedRows = rowsFromJson(JSON.parse(textContent));
-      else if (lower.endsWith(".xml") || /^\s*(<\?xml|<rss|<feed)/i.test(textContent)) parsedRows = rowsFromXml(textContent);
-      else {
-        const p = Papa.parse<Record<string, unknown>>(textContent, { header: true, skipEmptyLines: true, dynamicTyping: false });
-        parsedRows = p.data;
-      }
-      if (!parsedRows.length) throw new Error("Il file non contiene righe");
-      const hs = Array.from(new Set(parsedRows.flatMap((r) => Object.keys(r))));
+      const parsedRows = rowsFromFeedText(await file.text(), file.name);
+      const hs = headersOf(parsedRows);
       setHeaders(hs);
       setMapping(autoDetectMapping(hs));
       setRows(parsedRows);
+      setFeedSource(null);
       setBatch(file.name.replace(/\.[^.]+$/, ""));
     } catch (e) {
       setError(e instanceof Error ? e.message : "File non leggibile");
+    }
+  };
+
+  const readFeed = async () => {
+    const url = normalizeLink(feedUrl);
+    if (!url) {
+      setError("Indirizzo del feed non valido: usa un indirizzo http o https");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const preview = await api.fetchFeed(url);
+      setHeaders(preview.headers);
+      setMapping(autoDetectMapping(preview.headers));
+      setRows(preview.rows);
+      setFeedTotal(preview.total);
+      setFeedSource(url);
+      setBatch(new URL(url).hostname.replace(/^www\./, ""));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Feed non leggibile");
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -347,6 +366,21 @@ function FileTab({ onSaved }: { onSaved: () => void }) {
     setBusy(true);
     setError(null);
     try {
+      if (feedSource) {
+        const run = await api.saveFeed({
+          name: batch || "feed",
+          url: feedSource,
+          mapping: Object.fromEntries(Object.entries(mapping).filter(([, v]) => v)) as Record<string, string>,
+          unit,
+          retailer: retailer || "Importato",
+          currency: "EUR",
+        });
+        useEditor.getState().notify(`${run.status}. Il feed si aggiornerà da solo ogni giorno.`);
+        setRows(null);
+        void loadBatches();
+        onSaved();
+        return;
+      }
       const { imported } = await api.importProducts(batch || "import", result.products);
       useEditor.getState().notify(`Importati ${imported} prodotti nel catalogo`);
       setRows(null);
@@ -373,27 +407,77 @@ function FileTab({ onSaved }: { onSaved: () => void }) {
             <span className="text-sm text-muted">Servono almeno nome, prezzo e misure</span>
             <input type="file" accept=".csv,.json,.xml,.txt,text/csv,application/json,application/xml,text/xml" className="hidden" onChange={(e) => void onFile(e.target.files?.[0])} />
           </label>
+          {FEATURES.feeds && (
+            <form
+              className="flex flex-col gap-1.5"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void readFeed();
+              }}
+            >
+              <div className="flex items-end gap-2">
+                <TextField live label="Oppure l'indirizzo di un feed (si aggiornerà ogni giorno)" value={feedUrl} onChange={setFeedUrl} className="flex-1" />
+                <Button type="submit" disabled={busy || !feedUrl.trim()}>
+                  {busy ? "Lettura…" : "Leggi feed"}
+                </Button>
+              </div>
+              <p className="text-xs text-muted">
+                Usa solo feed forniti dal rivenditore o dal tuo programma di affiliazione (CSV, JSON o XML, anche compressi .gz, fino a
+                20 MB e 5000 prodotti).
+              </p>
+            </form>
+          )}
           {batches.length > 0 && (
             <div>
               <h3 className="mb-1 text-sm font-semibold">Cataloghi già importati</h3>
               <ul className="divide-y divide-line rounded-[5px] border border-line">
                 {batches.map((b) => (
-                  <li key={b.batch} className="flex items-center justify-between px-3 py-2 text-sm">
-                    <span>
+                  <li key={b.batch} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                    <span className="min-w-0">
                       {b.batch} <span className="text-muted">({b.count} prodotti)</span>
+                      {b.feed && (
+                        <span className="block truncate text-xs text-muted">
+                          Feed aggiornato {b.feed.lastRunAt ? `il ${new Date(b.feed.lastRunAt).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" })}` : "mai"}
+                          {b.feed.lastStatus ? ` · ${b.feed.lastStatus}` : ""}
+                        </span>
+                      )}
                     </span>
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      onClick={async () => {
-                        if (!confirm(`Eliminare i ${b.count} prodotti di «${b.batch}» dal catalogo?`)) return;
-                        await api.deleteImportBatch(b.batch).catch(() => {});
-                        void loadBatches();
-                        onSaved();
-                      }}
-                    >
-                      Elimina
-                    </Button>
+                    <span className="flex shrink-0 gap-2">
+                      {b.feed && (
+                        <Button
+                          size="sm"
+                          disabled={refreshing === b.feed.id}
+                          onClick={async () => {
+                            const id = b.feed!.id;
+                            setRefreshing(id);
+                            try {
+                              const run = await api.refreshFeed(id);
+                              useEditor.getState().notify(run.status);
+                              onSaved();
+                            } catch (e) {
+                              useEditor.getState().notify(e instanceof Error ? e.message : "Aggiornamento non riuscito", "warning");
+                            } finally {
+                              setRefreshing(null);
+                              void loadBatches();
+                            }
+                          }}
+                        >
+                          {refreshing === b.feed.id ? "Aggiornamento…" : "Aggiorna ora"}
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={async () => {
+                          if (!confirm(`Eliminare i ${b.count} prodotti di «${b.batch}» dal catalogo${b.feed ? " e il feed che li aggiorna" : ""}?`)) return;
+                          await api.deleteImportBatch(b.batch).catch(() => {});
+                          void loadBatches();
+                          onSaved();
+                        }}
+                      >
+                        Elimina
+                      </Button>
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -446,6 +530,7 @@ function FileTab({ onSaved }: { onSaved: () => void }) {
               <p className="border-b border-line px-3 py-2 text-sm">
                 <strong>{result.products.length}</strong> prodotti pronti su {rows.length} righe
                 {result.errors.length ? `, ${result.errors.length} righe scartate` : ""}
+                {feedSource && feedTotal > rows.length ? ` (anteprima delle prime ${rows.length} righe su ${feedTotal})` : ""}
               </p>
               <ul className="max-h-36 overflow-y-auto text-[12.5px]">
                 {result.products.slice(0, 5).map((p) => (
@@ -466,9 +551,9 @@ function FileTab({ onSaved }: { onSaved: () => void }) {
           )}
           {error && <p className="text-sm text-danger">{error}</p>}
           <div className="flex justify-between">
-            <Button onClick={() => setRows(null)}>Scegli un altro file</Button>
+            <Button onClick={() => setRows(null)}>{feedSource ? "Indietro" : "Scegli un altro file"}</Button>
             <Button variant="primary" disabled={busy || !result?.products.length} onClick={() => void doImport()}>
-              {busy ? "Import in corso…" : `Importa ${result?.products.length ?? 0} prodotti`}
+              {busy ? "Import in corso…" : feedSource ? "Salva il feed e importa" : `Importa ${result?.products.length ?? 0} prodotti`}
             </Button>
           </div>
         </>

@@ -14,6 +14,7 @@ export const FULL_APP_URL = process.env.NEXT_PUBLIC_FULL_APP_URL ?? "";
 /** Funzioni che richiedono il server. */
 export const FEATURES = {
   productLink: !STATIC_MODE,
+  feeds: !STATIC_MODE,
   sharing: !STATIC_MODE,
   remoteAnalyzer: !STATIC_MODE,
 };

@@ -132,6 +132,9 @@ interface RawResponse {
   location: string | null;
   type: string;
   body: string;
+  bytes: Buffer;
+  /** Vero se la risposta superava la dimensione massima ed è stata interrotta. */
+  truncated: boolean;
 }
 
 /** Una singola GET senza seguire i redirect, con limite di tempo totale e di dimensione. */
@@ -163,7 +166,7 @@ function requestOnce(url: URL, accept: string, maxBytes: number, timeoutMs: numb
         const status = res.statusCode ?? 0;
         const location = status >= 300 && status < 400 ? (res.headers.location ?? null) : null;
         if (location) {
-          settle(() => resolve({ status, location, type: "", body: "" }));
+          settle(() => resolve({ status, location, type: "", body: "", bytes: Buffer.alloc(0), truncated: false }));
           req.destroy();
           return;
         }
@@ -172,22 +175,25 @@ function requestOnce(url: URL, accept: string, maxBytes: number, timeoutMs: numb
           encoding === "gzip" || encoding === "x-gzip" ? res.pipe(zlib.createGunzip()) : encoding === "br" ? res.pipe(zlib.createBrotliDecompress()) : res;
         const chunks: Buffer[] = [];
         let size = 0;
-        const finish = () =>
-          settle(() => resolve({ status, location: null, type: String(res.headers["content-type"] ?? ""), body: Buffer.concat(chunks, size).toString("utf8") }));
+        const finish = (truncated = false) =>
+          settle(() => {
+            const bytes = Buffer.concat(chunks, size);
+            resolve({ status, location: null, type: String(res.headers["content-type"] ?? ""), body: bytes.toString("utf8"), bytes, truncated });
+          });
         stream.on("data", (chunk: Buffer) => {
           if (settled) return;
           const room = maxBytes - size;
-          if (chunk.length >= room) {
+          if (chunk.length > room) {
             chunks.push(chunk.subarray(0, room));
             size = maxBytes;
-            finish();
+            finish(true);
             req.destroy();
             return;
           }
           chunks.push(chunk);
           size += chunk.length;
         });
-        stream.on("end", finish);
+        stream.on("end", () => finish());
         stream.on("error", (err) => settle(() => reject(err)));
       },
     );
@@ -211,7 +217,7 @@ export async function guardedGet(
   accept: string,
   maxBytes: number,
   opts: { timeoutMs?: number } = {},
-): Promise<{ url: URL; status: number; body: string; type: string }> {
+): Promise<{ url: URL; status: number; body: string; type: string; bytes: Buffer; truncated: boolean }> {
   let url = start;
   for (let i = 0; i < MAX_REQUESTS; i++) {
     let res: RawResponse;
@@ -224,7 +230,7 @@ export async function guardedGet(
       if (code === "ENOTFOUND" || code === "EAI_AGAIN") throw new HttpError(400, "Dominio non raggiungibile");
       throw new HttpError(502, "Impossibile leggere la pagina dal sito");
     }
-    if (!res.location) return { url, status: res.status, body: res.body, type: res.type };
+    if (!res.location) return { url, status: res.status, body: res.body, type: res.type, bytes: res.bytes, truncated: res.truncated };
     let next: string;
     try {
       next = new URL(res.location, url).toString();

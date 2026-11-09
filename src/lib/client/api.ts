@@ -3,7 +3,17 @@
  * archivio nel browser. I componenti usano solo `api`.
  */
 import type { House, Product } from "@/domain/schema";
-import { ApiError, type Backend, type CatalogSearchParams, type CatalogSearchResponse, type ImportBatch, type ProjectFull, type ProjectSummary } from "./apiTypes";
+import {
+  ApiError,
+  type Backend,
+  type CatalogSearchParams,
+  type CatalogSearchResponse,
+  type FeedPreview,
+  type FeedRun,
+  type ImportBatch,
+  type ProjectFull,
+  type ProjectSummary,
+} from "./apiTypes";
 import type { LinkMetadata } from "@/catalog/linkMetadata";
 import { localBackend } from "./localBackend";
 import { STATIC_MODE } from "./mode";
@@ -50,6 +60,9 @@ export const remoteBackend: Backend = {
   listImportBatches: () => request<{ batches: ImportBatch[] }>("/api/catalog/import"),
   importProducts: (batch, products) => request<{ imported: number }>("/api/catalog/import", json("POST", { batch, products })),
   deleteImportBatch: (batch) => request<{ deleted: number }>(`/api/catalog/import?batch=${enc(batch)}`, { method: "DELETE" }),
+  fetchFeed: (url) => request<FeedPreview>("/api/catalog/feeds/fetch", json("POST", { url })),
+  saveFeed: (input) => request<FeedRun>("/api/catalog/feeds", json("POST", input)),
+  refreshFeed: (id) => request<FeedRun>(`/api/catalog/feeds/${enc(id)}`, { method: "POST" }),
 };
 
 export const api: Backend = STATIC_MODE ? localBackend : remoteBackend;

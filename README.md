@@ -361,6 +361,29 @@ becomes category and subcategory), `product_width`/`product_length`/
 `product_height` with their unit (`800 mm`), or `size`; when dimensions are
 missing they are read from the title or description.
 
+### Feeds that update themselves
+
+In the same dialog, instead of a file you can paste the **address of a feed**
+(CSV, JSON or XML, also gzip-compressed, up to 20 MB and 5,000 products): the
+server downloads it with the same protections used for product links, you check
+the column mapping on a preview of the first 200 rows, and *Salva il feed e
+importa* (Save the feed and import) imports it. From then on:
+
+- when the catalogue is opened and the feed is more than a day old, the server
+  downloads it again after answering the request (Next.js `after()`), so prices
+  stay current without slowing the page down; each feed is claimed with a
+  conditional update, so several server instances never download it twice;
+- products that disappeared from the feed are removed, and other users'
+  products are never touched;
+- the list of imported catalogues shows when each feed was last updated and its
+  outcome, with an *Aggiorna ora* (Update now) button; deleting the catalogue
+  also deletes the feed.
+
+Use only feeds provided by the retailer or by your affiliate programme. Saved
+feeds need the server, so they are not available in the static version.
+[`public/esempio-feed.xml`](public/esempio-feed.xml) is served by the app at
+`/esempio-feed.xml` and can be used to try the feature.
+
 ### Product from link and manual product
 
 **+ Aggiungi → Da link** (From link): paste the address of a product page (any

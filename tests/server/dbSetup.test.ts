@@ -61,7 +61,8 @@ describe("preparazione del database", () => {
       sql: `INSERT INTO "_prisma_migrations" (id, checksum, finished_at, migration_name, started_at, applied_steps_count) VALUES ('x', ?, 1, ?, 1, 1)`,
       args: [MIGRATIONS[0].checksum, MIGRATIONS[0].name],
     });
-    expect(await applyMigrations(client)).toEqual([]);
+    // Applica solo le migrazioni successive a quelle già registrate.
+    expect(await applyMigrations(client)).toEqual(MIGRATIONS.slice(1).map((m) => m.name));
     client.close();
   });
 

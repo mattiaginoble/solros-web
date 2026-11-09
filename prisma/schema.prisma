@@ -18,6 +18,7 @@ model User {
   createdAt DateTime  @default(now())
   projects  Project[]
   products  Product[]
+  feeds     CatalogFeed[]
 }
 
 model Project {
@@ -82,4 +83,25 @@ model Product {
   @@index([retailer])
   @@index([source])
   @@index([ownerId])
+}
+
+/// Feed prodotti salvato: riscaricato quando è più vecchio di un giorno.
+model CatalogFeed {
+  id         String    @id @default(cuid())
+  ownerId    String
+  owner      User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  /// Nome del lotto di import (Product.importBatch).
+  name       String
+  url        String
+  /// Corrispondenza delle colonne (JSON).
+  mapping    String
+  unit       String    @default("cm")
+  retailer   String
+  currency   String    @default("EUR")
+  lastRunAt  DateTime?
+  lastStatus String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([ownerId, name])
 }

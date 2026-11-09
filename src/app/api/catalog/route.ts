@@ -1,6 +1,8 @@
+import { after } from "next/server";
 import { z } from "zod";
 import { searchCatalog } from "@/catalog/service";
 import { handleError, HttpError, zodDetails } from "@/lib/server/http";
+import { refreshStaleFeeds } from "@/lib/server/feeds";
 import { findCurrentUser } from "@/lib/server/user";
 
 const num = z.coerce.number().finite().optional();
@@ -56,6 +58,8 @@ export async function GET(req: Request) {
       },
       { userId: user?.id ?? null },
     );
+    // Feed salvati più vecchi di un giorno: aggiornati dopo la risposta, senza rallentarla.
+    if (user) after(() => refreshStaleFeeds(user.id).catch(() => {}));
     return Response.json(result);
   } catch (err) {
     return handleError(err);

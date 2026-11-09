@@ -59,6 +59,30 @@ export interface ImportBatch {
   batch: string;
   count: number;
   updatedAt?: string;
+  /** Feed salvato che aggiorna il lotto ogni giorno. */
+  feed?: { id: string; url: string; lastRunAt: string | null; lastStatus: string | null };
+}
+
+export interface FeedPreview {
+  rows: Record<string, unknown>[];
+  total: number;
+  headers: string[];
+}
+
+export interface FeedInput {
+  name: string;
+  url: string;
+  mapping: Record<string, string>;
+  unit: "cm" | "mm" | "m";
+  retailer: string;
+  currency: string;
+}
+
+export interface FeedRun {
+  imported: number;
+  discarded: number;
+  total: number;
+  status: string;
 }
 
 /** Operazioni sui dati: implementate dalle API del server o dall'archivio nel browser. */
@@ -79,4 +103,7 @@ export interface Backend {
   listImportBatches(): Promise<{ batches: ImportBatch[] }>;
   importProducts(batch: string, products: Product[]): Promise<{ imported: number }>;
   deleteImportBatch(batch: string): Promise<{ deleted: number }>;
+  fetchFeed(url: string): Promise<FeedPreview>;
+  saveFeed(input: FeedInput): Promise<FeedRun>;
+  refreshFeed(id: string): Promise<FeedRun>;
 }

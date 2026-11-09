@@ -201,6 +201,9 @@ export const localBackend: Backend = {
   },
 
   readProductLink: async () => unavailable("La lettura dei prodotti da link"),
+  fetchFeed: async () => unavailable("Il download dei feed"),
+  saveFeed: async () => unavailable("L'aggiornamento automatico dei feed"),
+  refreshFeed: async () => unavailable("L'aggiornamento automatico dei feed"),
 
   async listImportBatches() {
     const groups = new Map<string, ImportBatch>();
