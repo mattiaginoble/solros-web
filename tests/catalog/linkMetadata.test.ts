@@ -104,6 +104,11 @@ describe("metadati da link prodotto", () => {
     expect(extractProductMetadata(html, "https://www.ikea.com/it/it/cat/billy-58288/").isProduct).toBe(false);
   });
 
+  it("dà ai tappeti senza spessore un'altezza di 1 cm", () => {
+    const rug = extractProductMetadata(ikeaLike({ name: "STOENSE Tappeto pelo corto - beige 133x195 cm", offers: { price: "49" } }), "https://www.ikea.com/it/it/p/stoense-1/");
+    expect(rug).toMatchObject({ shape: "rug", width: 133, depth: 195, height: 1 });
+  });
+
   it("non scambia l'altezza di una lampada da terra per un diametro; legge i tappeti LxP", () => {
     const lamp = extractProductMetadata(ikeaLike({ name: "Lampada da terra - ottone 154 cm", offers: { price: "49" } }), "https://www.ikea.com/it/it/p/l-1/");
     expect(lamp.shape).toBe("lamp-floor");
@@ -161,6 +166,24 @@ describe("metadati da link prodotto", () => {
       height: 180,
     });
     expect(measurementList(html([["Altezza, inclusi cuscini schienale", "82 cm"], ["Altezza", "80 cm"]])).height).toBe(80);
+    // Tappeti: spessore come altezza. Letti: altezza della testiera. Angolari: i due lati della L.
+    expect(measurementList(html([["Lunghezza", "195 cm"], ["Larghezza", "133 cm"], ["Superficie", "2.60 m²"], ["Spessore", "18 mm"]]), "rug")).toEqual({
+      width: 133,
+      depth: 195,
+      height: 1.8,
+    });
+    expect(
+      measurementList(
+        html([["Altezza interna", "27 cm"], ["Lunghezza", "210 cm"], ["Larghezza", "155 cm"], ["Altezza pediera", "38 cm"], ["Altezza testiera", "100 cm"], ["Larghezza materasso", "140 cm"]]),
+        "bed",
+      ),
+    ).toEqual({ width: 155, depth: 210, height: 100 });
+    expect(
+      measurementList(
+        html([["Altezza, inclusi cuscini schienale", "83 cm"], ["Profondità", "98 cm"], ["Larghezza destra", "249 cm"], ["Larghezza sedile destra", "192 cm"], ["Larghezza sinistra", "209 cm"]]),
+        "sofa",
+      ),
+    ).toEqual({ width: 249, depth: 209, height: 83 });
     // Classi senza riferimenti alle misure: ignorate.
     expect(measurementList(`<span class="title">Larghezza</span><span>10 cm</span>`)).toEqual({ width: undefined, depth: undefined, height: undefined });
   });

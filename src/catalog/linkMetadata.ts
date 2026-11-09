@@ -120,6 +120,9 @@ const MEASURE_KEYS: Record<string, string> = {
 export function measurementList(html: string, shape?: string): { width?: number; depth?: number; height?: number } {
   const values: Record<string, number> = {};
   const fallback: Record<string, number> = {};
+  /** Valore più grande fra le etichette che iniziano con la stessa misura («Altezza testiera»…). */
+  const largest: Record<string, number> = {};
+  const sides: { right?: number; left?: number } = {};
   for (const m of html.matchAll(MEASURE_LABEL)) {
     const cls = m[2].toLowerCase();
     if (!/measure|dimension|misur/.test(cls) || /package|pacco|imball/.test(cls)) continue;
@@ -133,10 +136,25 @@ export function measurementList(html: string, shape?: string): { width?: number;
     // «Altezza, inclusi cuscini schienale», «Profondità minima»: solo se manca l'etichetta semplice.
     const variant = /^(larghezza|profondita|altezza|lunghezza|diametro),? (?:minima|inclus\w*|con)\b/.exec(label);
     if (variant) fallback[MEASURE_KEYS[variant[1]]] ??= cm;
+    // Tappeti: lo spessore è l'altezza.
+    if (label === "spessore") fallback.height ??= cm;
+    // Divani angolari: i due lati della L.
+    if (/^larghezza (destra|lato destro)$/.test(label)) sides.right ??= cm;
+    if (/^larghezza (sinistra|lato sinistro)$/.test(label)) sides.left ??= cm;
+    const prefixed = /^(larghezza|profondita|altezza)\b(.*)$/.exec(label);
+    if (prefixed && !/sedile|seduta|intern|materasso|bracciolo|spazio|minima|massima|pacco/.test(prefixed[2])) {
+      const k = MEASURE_KEYS[prefixed[1]];
+      largest[k] = Math.max(largest[k] ?? 0, cm);
+    }
   }
   for (const [k, v] of Object.entries(fallback)) values[k] ??= v;
-  let { width, depth } = values;
-  const { height, length, diameter } = values;
+  let { width, depth, height } = values;
+  const { length, diameter } = values;
+  if (width === undefined && sides.right && sides.left) {
+    // L: un lato è la larghezza, l'altro la profondità d'ingombro (non quella della seduta).
+    width = Math.max(sides.right, sides.left);
+    depth = Math.min(sides.right, sides.left);
+  }
   if (length !== undefined) {
     if (width === undefined) width = length;
     else if (depth === undefined) {
@@ -149,6 +167,10 @@ export function measurementList(html: string, shape?: string): { width?: number;
     width ??= diameter;
     depth ??= diameter;
   }
+  // Letti: «Altezza testiera» è l'altezza d'ingombro quando manca quella semplice.
+  width ??= largest.width;
+  depth ??= largest.depth;
+  height ??= largest.height;
   return { width, depth, height };
 }
 
@@ -262,6 +284,8 @@ export function extractProductMetadata(html: string, pageUrl: string): LinkMetad
       }
     }
   }
+  // Tappeti senza spessore indicato: 1 cm, quanto basta per la pianta e il 3D.
+  if (inferred.shape === "rug" && meta.width && meta.depth && !meta.height) set("height", 1, "tappeto (spessore stimato)");
   // og:type "product" sì, "product.group" (pagine di categoria) no.
   const ogType = (metaContent(html, "og:type") ?? "").toLowerCase();
   meta.isProduct = !!product || ["product", "product.item", "og:product"].includes(ogType) || meta.price !== undefined;
