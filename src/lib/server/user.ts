@@ -38,6 +38,8 @@ export async function getCurrentUser() {
   jar.set(USER_COOKIE, user.id, {
     httpOnly: true,
     sameSite: "lax",
+    // Su Vercel il sito è sempre in HTTPS; in locale si usa anche http://.
+    secure: process.env.VERCEL === "1",
     path: "/",
     maxAge: 60 * 60 * 24 * 365 * 2,
   });

@@ -29,7 +29,7 @@ const nextConfig: NextConfig = {
         pageExtensions: ["tsx", "static.tsx"],
       }
     : {
-        serverExternalPackages: ["better-sqlite3", "@prisma/adapter-better-sqlite3"],
+        serverExternalPackages: ["@libsql/client", "libsql", "@prisma/adapter-libsql"],
         pageExtensions: ["tsx", "ts", "server.tsx"],
       }),
 };

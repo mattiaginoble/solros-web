@@ -2,6 +2,9 @@
   "name": "solros-web",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -11,16 +14,17 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:migrate": "prisma migrate dev",
+    "db:migrate": "prisma migrate dev && node scripts/embed-migrations.mjs",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
     "db:reset": "prisma migrate reset --force",
-    "postinstall": "prisma generate && node scripts/copy-pdf-worker.mjs",
+    "postinstall": "prisma generate && node scripts/copy-pdf-worker.mjs && node scripts/embed-migrations.mjs",
     "setup": "prisma migrate deploy && prisma db seed"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",
-    "@prisma/adapter-better-sqlite3": "^7.10.1",
+    "@libsql/client": "^0.17.0",
+    "@prisma/adapter-libsql": "^7.10.1",
     "@prisma/client": "^7.10.1",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.2",

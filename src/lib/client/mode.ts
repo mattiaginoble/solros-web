@@ -8,6 +8,9 @@ export const STATIC_MODE = process.env.NEXT_PUBLIC_STATIC_EXPORT === "1";
 /** Prefisso del sito, per esempio "/solros-web" su GitHub Pages. */
 export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
+/** Indirizzo della versione completa (con server), mostrato nella versione statica. */
+export const FULL_APP_URL = process.env.NEXT_PUBLIC_FULL_APP_URL ?? "";
+
 /** Funzioni che richiedono il server. */
 export const FEATURES = {
   productLink: !STATIC_MODE,

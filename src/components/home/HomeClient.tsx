@@ -8,7 +8,7 @@ import { cloneHouseWithNewIds, createHouse } from "@/domain/factory";
 import { safeParseHouse } from "@/domain/schema";
 import { ROOM_TEMPLATES } from "@/domain/templates";
 import { api, type ProjectSummary } from "@/lib/client/api";
-import { editorHref, STATIC_MODE } from "@/lib/client/mode";
+import { editorHref, FULL_APP_URL, STATIC_MODE } from "@/lib/client/mode";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "short", year: "numeric" });
@@ -189,7 +189,18 @@ export function HomeClient() {
           <p role="note" className="rounded-[6px] border border-warning/40 bg-warning-tint px-4 py-3 text-sm leading-relaxed text-graphite">
             <strong className="font-semibold">Versione dimostrativa senza server.</strong> I progetti e i prodotti che aggiungi restano
             salvati solo in questo browser: esportali in JSON per conservarli. Prodotti da link, analisi delle planimetrie con Claude e
-            link di condivisione sono disponibili nella versione completa da avviare con Node.js.
+            link di condivisione sono disponibili nella versione completa
+            {FULL_APP_URL ? (
+              <>
+                :{" "}
+                <a href={FULL_APP_URL} className="font-medium text-prussian underline">
+                  apri la versione completa
+                </a>
+                .
+              </>
+            ) : (
+              "."
+            )}
           </p>
         </div>
       )}

@@ -7,9 +7,11 @@ a quote.
 The user interface is in Italian; button and menu names below are quoted as
 they appear in the app, with an English translation.
 
-**Live demo (static version):** https://mattiaginoble.github.io/solros-web/ —
-see [Static version on GitHub Pages](#static-version-on-github-pages) for what
-it includes.
+**Online:** the full version can be deployed for free on Vercel with a Turso
+database, see [Deploying online](#deploying-online-vercel--turso). A static
+demo that runs entirely in the browser is published at
+https://mattiaginoble.github.io/solros-web/ (see
+[Static version on GitHub Pages](#static-version-on-github-pages)).
 
 ## Quick start
 
@@ -32,9 +34,43 @@ Useful commands:
 | `npm test` | unit tests (Vitest) |
 | `npm run typecheck` | TypeScript type check |
 | `npm run lint` | ESLint |
-| `npm run db:migrate` | apply/create migrations during development |
+| `npm run db:migrate` | apply/create migrations during development (and embed them for automatic setup) |
 | `npm run db:seed` | load the demo catalogue (85 products) and 3 example houses |
 | `npm run db:reset` | recreate the database from scratch (and re-run the seed) |
+
+## Deploying online (Vercel + Turso)
+
+The full version (projects stored on the server, share links, products from
+links) runs on [Vercel](https://vercel.com) with a [Turso](https://turso.tech)
+database, which is SQLite in the cloud: same schema and migrations as the local
+database. Both have free plans. Visitors only need a browser.
+
+1. On Vercel, sign in with GitHub and choose **Add New → Project**, then import
+   this repository. Next.js is detected automatically and the production branch
+   is the repository's default branch.
+2. In the project, open **Storage** (or the Marketplace), add **Turso**, create
+   a database in a European region (for example Frankfurt) and connect it to the
+   project: Vercel adds `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` to the
+   environment variables. Alternatively, create the database on turso.tech and
+   add the two variables by hand.
+3. Deploy (or redeploy, if the first deployment ran before the database was
+   connected).
+
+On the first request the app creates the tables and loads the demo catalogue
+and example houses by itself (`src/lib/server/dbSetup.ts`), so no command needs
+to be run on the database. Every push to the default branch is deployed again.
+Without a Turso database the app answers with an explicit configuration error,
+because Vercel's file system does not persist data.
+
+Notes:
+
+- `vercel.json` places the functions in Frankfurt (`fra1`), close to a European
+  database.
+- Rate limits (product link reading, Claude analyses) are kept in memory, so on
+  Vercel they apply to each running instance.
+- To enable floor plan recognition with Claude online, add
+  `FLOORPLAN_ANALYZER=claude` and `ANTHROPIC_API_KEY` to the Vercel environment
+  variables (see [Floor plan import](#floor-plan-import)).
 
 ## Static version on GitHub Pages
 
@@ -81,7 +117,9 @@ Build and deployment → Source: GitHub Actions**.
 - **react-konva**: 2D floor plan editor.
 - **three.js + react-three-fiber (drei)**: 3D view.
 - **Zustand + Immer**: editor state with undo/redo and autosave.
-- **Prisma + SQLite**: projects, product catalogue, simple users.
+- **Prisma + SQLite (libSQL)**: projects, product catalogue, simple users; a
+  local file in development, Turso online. Missing migrations and demo data are
+  applied automatically on startup.
 - **pdf.js, PapaParse, jsPDF**: PDF floor plan import, CSV import, PDF export.
 - **Vitest**: tests for geometry, pricing, catalogue, kitchen and data logic.
 

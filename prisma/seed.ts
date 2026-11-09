@@ -1,61 +1,23 @@
 /**
- * Seed del database: catalogo demo e case di esempio.
- * Eseguito da `npm run db:seed` (e da `npm run setup`).
+ * Seed del database: migrazioni mancanti, catalogo demo e case di esempio.
+ * Eseguito da `npm run db:seed` (e da `npm run setup`); l'app fa lo stesso da
+ * sola al primo avvio, quindi su Vercel non serve lanciarlo.
  */
 import "dotenv/config";
+import { PrismaLibSql } from "@prisma/adapter-libsql";
 import { PrismaClient } from "../src/generated/prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import { DEMO_PRODUCTS } from "../src/catalog/demoData";
-import { EXAMPLE_HOUSES } from "../src/domain/examples";
+import { databaseConfig, ensureDatabase } from "../src/lib/server/dbSetup";
 
-const prisma = new PrismaClient({
-  adapter: new PrismaBetterSqlite3({ url: process.env.DATABASE_URL ?? "file:./prisma/dev.db" }),
-});
+const prisma = new PrismaClient({ adapter: new PrismaLibSql(databaseConfig()) });
 
-async function main() {
-  for (const p of DEMO_PRODUCTS) {
-    const row = {
-      id: p.id,
-      source: p.source,
-      retailer: p.retailer,
-      code: p.code ?? null,
-      name: p.name,
-      category: p.category,
-      subcategory: p.subcategory ?? null,
-      width: p.width,
-      depth: p.depth,
-      height: p.height,
-      price: p.price,
-      currency: p.currency,
-      color: p.color ?? null,
-      colorHex: p.colorHex ?? null,
-      imageUrl: p.imageUrl ?? null,
-      url: p.url ?? null,
-      mount: p.mount,
-      elevation: p.elevation ?? null,
-      clearanceFront: p.clearance.front,
-      clearanceSides: p.clearance.sides,
-      modelUrl: p.modelUrl ?? null,
-      shape: p.shape ?? null,
-      meta: p.meta ? JSON.stringify(p.meta) : null,
-      priceUpdatedAt: new Date(p.priceUpdatedAt),
-    };
-    await prisma.product.upsert({ where: { id: p.id }, create: row, update: row });
-  }
-  console.log(`Catalogo demo: ${DEMO_PRODUCTS.length} prodotti`);
-
-  for (const ex of EXAMPLE_HOUSES) {
-    const house = ex.build();
-    await prisma.project.upsert({
-      where: { id: ex.id },
-      create: { id: ex.id, name: house.name, data: JSON.stringify(house), isExample: true },
-      update: { name: house.name, data: JSON.stringify(house), isExample: true },
-    });
-  }
-  console.log(`Case di esempio: ${EXAMPLE_HOUSES.length}`);
-}
-
-main()
+ensureDatabase(prisma)
+  .then(async () => {
+    const [products, examples] = await Promise.all([
+      prisma.product.count({ where: { source: "demo" } }),
+      prisma.project.count({ where: { isExample: true } }),
+    ]);
+    console.log(`Catalogo demo: ${products} prodotti, case di esempio: ${examples}`);
+  })
   .catch((e) => {
     console.error(e);
     process.exit(1);
