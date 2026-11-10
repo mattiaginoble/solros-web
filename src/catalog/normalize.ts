@@ -75,6 +75,7 @@ export function parseDimensions(text: string): { width?: number; depth?: number;
 const SHAPE_RULES: [RegExp, Shape, MountType?][] = [
   // Prima di tavoli e scrivanie: «lampada da tavolo» è una lampada.
   [/lampada da (?:tavolo|scrivania|comodino|lettura)|table lamp|desk lamp/, "lamp-floor"],
+  [/specchio da (?:tavolo|terra|appoggio)/, "mirror"],
   [/divano|sofa/, "sofa"],
   [/poltron|armchair/, "armchair"],
   [/\bletto|\bbed\b|materasso/, "bed"],

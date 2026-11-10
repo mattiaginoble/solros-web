@@ -117,12 +117,16 @@ const MEASURE_KEYS: Record<string, string> = {
  * measurement-name / measurement-value). Si leggono solo le etichette esatte,
  * non quelle di sedile, pacco o imballo.
  */
-export function measurementList(html: string, shape?: string): { width?: number; depth?: number; height?: number } {
+export function measurementList(
+  html: string,
+  shape?: string,
+): { width?: number; depth?: number; height?: number; seatDiameter?: number; seatHeight?: number } {
   const values: Record<string, number> = {};
   const fallback: Record<string, number> = {};
   /** Valore più grande fra le etichette che iniziano con la stessa misura («Altezza testiera»…). */
   const largest: Record<string, number> = {};
   const sides: { right?: number; left?: number } = {};
+  const seat: { diameter?: number; height?: number } = {};
   for (const m of html.matchAll(MEASURE_LABEL)) {
     const cls = m[2].toLowerCase();
     if (!/measure|dimension|misur/.test(cls) || /package|pacco|imball/.test(cls)) continue;
@@ -138,6 +142,9 @@ export function measurementList(html: string, shape?: string): { width?: number;
     if (variant) fallback[MEASURE_KEYS[variant[1]]] ??= cm;
     // Tappeti: lo spessore è l'altezza.
     if (label === "spessore") fallback.height ??= cm;
+    // Sedile: misura d'ingombro degli sgabelli senza schienale.
+    if (/^diametro (sedile|seduta)$/.test(label)) seat.diameter ??= cm;
+    if (/^altezza (sedile|seduta)$/.test(label)) seat.height ??= cm;
     // Divani angolari: i due lati della L.
     if (/^larghezza (destra|lato destro)$/.test(label)) sides.right ??= cm;
     if (/^larghezza (sinistra|lato sinistro)$/.test(label)) sides.left ??= cm;
@@ -175,7 +182,7 @@ export function measurementList(html: string, shape?: string): { width?: number;
   width ??= largest.width;
   depth ??= largest.depth;
   height ??= largest.height;
-  return { width, depth, height };
+  return { width, depth, height, seatDiameter: seat.diameter, seatHeight: seat.height };
 }
 
 export function extractProductMetadata(html: string, pageUrl: string): LinkMetadata {
@@ -247,6 +254,12 @@ export function extractProductMetadata(html: string, pageUrl: string): LinkMetad
   // 3. Scheda delle misure della pagina (coppie etichetta / valore)
   if (!meta.width || !meta.depth || !meta.height) {
     const m = measurementList(html, inferShape(`${meta.name ?? ""} ${meta.category ?? ""}`).shape);
+    // Sgabelli: tondi, e l'altezza del sedile è l'altezza d'ingombro.
+    if (/sgabell|stool/.test(normalizeText(meta.name ?? ""))) {
+      m.width ??= m.seatDiameter;
+      m.depth ??= m.width;
+      m.height ??= m.seatHeight;
+    }
     set("width", m.width, "scheda misure");
     set("depth", m.depth, "scheda misure");
     set("height", m.height, "scheda misure");
@@ -293,7 +306,11 @@ export function extractProductMetadata(html: string, pageUrl: string): LinkMetad
   // Oggetti a parete e piante con una misura mancante: stime minime per pianta e 3D.
   if (inferred.shape === "mirror" && meta.width && meta.height) set("depth", 3, "specchio (spessore stimato)");
   if (inferred.shape === "lamp-wall" && meta.width) set("height", meta.width, "lampada (altezza stimata)");
-  if (inferred.shape === "plant" && meta.width) set("depth", meta.width, "pianta (vaso tondo)");
+  if (inferred.shape === "plant" && meta.width) {
+    set("depth", meta.width, "pianta (vaso tondo)");
+    set("height", Math.round(meta.width * 3), "pianta (altezza stimata dal vaso)");
+  }
+  if (inferred.shape === "lamp-floor" && meta.width) set("depth", meta.width, "lampada (paralume tondo)");
   // Lampade a sospensione: paralume tondo (profondità = larghezza) e altezza stimata se manca.
   if (inferred.shape === "lamp-ceiling" && meta.width) {
     set("depth", meta.width, "lampada (paralume tondo)");

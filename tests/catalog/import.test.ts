@@ -34,6 +34,7 @@ describe("normalizzazione", () => {
     expect(inferShape("Pianta in vaso grande").shape).toBe("plant");
     expect(inferShape("Vaso sospeso con sedile").shape).toBe("toilet");
     expect(inferShape("FORSÅ Lampada da scrivania - nero").shape).toBe("lamp-floor");
+    expect(inferShape("IKORNNES Specchio da tavolo - frassino").shape).toBe("mirror");
     expect(inferShape("KALLAX Mobile con ante - bianco").shape).toBe("cabinet");
     expect(inferShape("Tavolino da caffè").shape).toBe("table");
     expect(inferShape("Tavolo allungabile").shape).toBe("table");

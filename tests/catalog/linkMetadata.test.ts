@@ -133,6 +133,29 @@ describe("metadati da link prodotto", () => {
     });
   });
 
+  it("sgabelli, lampade da tavolo e piante con solo il diametro del vaso", () => {
+    const row = (n: string, v: string) => `<span class="pipf-measurements-tab__measurement-name">${n}</span><span class="pipf-measurements-tab__measurement-value">${v}</span>`;
+    const page = (name: string, rows: string) => ikeaLike({ name, offers: { price: "15" } }).replace("</html>", `<body>${rows}</body></html>`);
+    const url = "https://www.ikea.com/it/it/p/x-2/";
+    expect(extractProductMetadata(page("DOMSTEN Sgabello - pino", row("Altezza", "45 cm") + row("Diametro sedile", "34 cm")), url)).toMatchObject({ width: 34, depth: 34, height: 45 });
+    expect(extractProductMetadata(page("GULTARP Sgabello - antracite", row("Diametro sedile", "33 cm") + row("Altezza sedile", "45 cm") + row("Larghezza", "41 cm")), url)).toMatchObject({
+      width: 41,
+      depth: 41,
+      height: 45,
+    });
+    expect(extractProductMetadata(page("DEJSA Lampada da tavolo - beige", row("Larghezza paralume", "26 cm") + row("Altezza", "28 cm")), url)).toMatchObject({
+      shape: "lamp-floor",
+      width: 26,
+      depth: 26,
+      height: 28,
+    });
+    expect(extractProductMetadata(page("FEJKA Pianta artificiale in vaso, aralia, 12 cm", row("Diametro vaso", "12 cm")), url)).toMatchObject({ shape: "plant", width: 12, depth: 12, height: 36 });
+    expect(extractProductMetadata(page("IKORNNES Specchio da tavolo - frassino", row("Larghezza", "27 cm") + row("Altezza", "41 cm")), url)).toMatchObject({
+      shape: "mirror",
+      depth: 3,
+    });
+  });
+
   it("dà ai tappeti senza spessore un'altezza di 1 cm", () => {
     const rug = extractProductMetadata(ikeaLike({ name: "STOENSE Tappeto pelo corto - beige 133x195 cm", offers: { price: "49" } }), "https://www.ikea.com/it/it/p/stoense-1/");
     expect(rug).toMatchObject({ shape: "rug", width: 133, depth: 195, height: 1 });
