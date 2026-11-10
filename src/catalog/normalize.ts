@@ -76,6 +76,8 @@ const SHAPE_RULES: [RegExp, Shape, MountType?][] = [
   // Prima di tavoli e scrivanie: «lampada da tavolo» è una lampada.
   [/lampada da (?:tavolo|scrivania|comodino|lettura)|table lamp|desk lamp/, "lamp-floor"],
   [/specchio da (?:tavolo|terra|appoggio)/, "mirror"],
+  // «Piante artificiali da tavolo»: è una pianta.
+  [/pianta|piante|plant/, "plant"],
   [/divano|sofa/, "sofa"],
   [/poltron|armchair/, "armchair"],
   [/\bletto|\bbed\b|materasso/, "bed"],
@@ -107,7 +109,6 @@ const SHAPE_RULES: [RegExp, Shape, MountType?][] = [
   [/lampadario|plafoniera|sospensione|faretto da soffitto|pendant|ceiling/, "lamp-ceiling", "ceiling"],
   [/lampada|lamp/, "lamp-floor"],
   [/tappeto|rug|carpet/, "rug"],
-  [/pianta|plant/, "plant"],
   [/scala|stairs|staircase/, "stairs"],
 ];
 
