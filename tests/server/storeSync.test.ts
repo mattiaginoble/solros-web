@@ -44,7 +44,7 @@ function fakeSite(pages: Record<string, { status?: number; html?: string; url?: 
     if (p instanceof Error) throw p;
     return { status: p.status ?? 200, url: p.url ?? url, html: p.html ?? "" };
   });
-  return { fetchPage, fetchRobots: vi.fn(async () => ROBOTS), sleep: vi.fn(async () => {}) };
+  return { fetchPage, fetchRobots: vi.fn(async () => ROBOTS), sleep: vi.fn(async (ms: number) => void ms) };
 }
 
 const storeProducts = () => prisma.product.findMany({ where: { source: "store" }, orderBy: { name: "asc" } });
@@ -139,6 +139,22 @@ describe("catalogo Negozi", () => {
     expect(await syncStorePages({ pages, now, ...site })).toMatchObject({ checked: 0 });
     expect(await syncStorePages({ pages, now, retryIncomplete: true, ...site })).toMatchObject({ checked: 1, updated: 1 });
     expect(await page(senzaMisure.url)).toMatchObject({ status: "ok" });
+  });
+
+  it("rispetta il Crawl-delay di ogni sito e salta quelli che chiedono pause troppo lunghe", async () => {
+    const lento = (n: number): StorePageEntry => ({ url: `https://lento.example.com/p/${n}`, retailer: "Lento", category: "Soggiorno", subcategory: "Divani" });
+    const vietato = { url: "https://lentissimo.example.com/p/1", retailer: "Lentissimo", category: "Soggiorno", subcategory: "Divani" };
+    const site = {
+      ...fakeSite({ [lento(1).url]: { html: productPage("Divano Uno", 100) }, [lento(2).url]: { html: productPage("Divano Due", 100) } }),
+      fetchRobots: vi.fn(async (origin: string) => (origin.includes("lentissimo") ? "User-agent: *\nCrawl-delay: 60" : "User-agent: *\nCrawl-delay: 5")),
+    };
+    const report = await syncStorePages({ pages: [lento(1), lento(2), vietato], now, delayMs: 2000, ...site });
+    expect(report).toMatchObject({ checked: 2, updated: 2 });
+    expect(report.stoppedBy).toMatch(/lentissimo.*sito saltato/);
+    // Una sola pausa, lunga circa quanto il Crawl-delay (5 s) e non i 2 s predefiniti.
+    expect(site.sleep).toHaveBeenCalledTimes(1);
+    expect(site.sleep.mock.calls[0][0]).toBeGreaterThan(4000);
+    expect(site.fetchPage).not.toHaveBeenCalledWith(vietato.url);
   });
 
   it("toglie pagine e prodotti usciti dall'elenco", async () => {

@@ -112,6 +112,39 @@ const MEASURE_KEYS: Record<string, string> = {
   diameter: "diameter",
 };
 
+const SPEC_ROW = /<th\b[^>]*>([^<]{1,80})<\/th>\s*<td\b[^>]*>([\s\S]{1,400}?)<\/td>/gi;
+
+/**
+ * Coppie etichetta / misura in cm dalle tabelle delle misure della pagina:
+ * scheda «Misure» (IKEA: measurement-name / measurement-value) e tabelle di
+ * caratteristiche con le misure in una riga (JYSK: «Dimensioni da montato |
+ * Larghezza 154 cm, Altezza 85 cm, Profondità 84 cm»). Misure del pacco escluse.
+ */
+function measurePairs(html: string): { label: string; cm: number }[] {
+  const pairs: { label: string; cm: number }[] = [];
+  const add = (rawLabel: string, rawValue: string) => {
+    const label = normalizeText(decodeEntities(rawLabel)).replace(/[:\s]+$/, "").trim();
+    const value = /^(\d+(?:[.,]\d+)?)\s*(mm|cm|m)\b/i.exec(decodeEntities(rawValue).trim());
+    if (!value) return;
+    const cm = Math.round(Number(value[1].replace(",", ".")) * unitToCm(value[2].toLowerCase()) * 10) / 10;
+    if (cm > 0) pairs.push({ label, cm });
+  };
+  for (const m of html.matchAll(MEASURE_LABEL)) {
+    const cls = m[2].toLowerCase();
+    if (/measure|dimension|misur/.test(cls) && !/package|pacco|imball/.test(cls)) add(m[3], m[4]);
+  }
+  for (const m of html.matchAll(SPEC_ROW)) {
+    const head = normalizeText(decodeEntities(m[1]));
+    if (!/dimension|misur/.test(head) || /non montat|imball|confezion|pacco|package|scatola/.test(head)) continue;
+    const text = decodeEntities(m[2].replace(/<[^>]+>/g, " "));
+    for (const part of text.split(/[,;]/)) {
+      const pm = /^\s*([^\d,;]{2,40}?)\s*:?\s*(\d+(?:[.,]\d+)?\s*(?:mm|cm|m))\b/i.exec(part);
+      if (pm) add(pm[1], pm[2]);
+    }
+  }
+  return pairs;
+}
+
 /**
  * Misure principali dalla scheda «Misure» della pagina (per esempio IKEA:
  * measurement-name / measurement-value). Si leggono solo le etichette esatte,
@@ -127,14 +160,7 @@ export function measurementList(
   const largest: Record<string, number> = {};
   const sides: { right?: number; left?: number } = {};
   const seat: { diameter?: number; height?: number } = {};
-  for (const m of html.matchAll(MEASURE_LABEL)) {
-    const cls = m[2].toLowerCase();
-    if (!/measure|dimension|misur/.test(cls) || /package|pacco|imball/.test(cls)) continue;
-    const label = normalizeText(decodeEntities(m[3])).replace(/[:\s]+$/, "").trim();
-    const value = /^(\d+(?:[.,]\d+)?)\s*(mm|cm|m)\b/i.exec(decodeEntities(m[4]).trim());
-    if (!value) continue;
-    const cm = Math.round(Number(value[1].replace(",", ".")) * unitToCm(value[2].toLowerCase()) * 10) / 10;
-    if (!(cm > 0)) continue;
+  for (const { label, cm } of measurePairs(html)) {
     const key = MEASURE_KEYS[label];
     if (key) values[key] ??= cm;
     // «Altezza, inclusi cuscini schienale», «Profondità minima»: solo se manca l'etichetta semplice.

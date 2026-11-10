@@ -102,7 +102,7 @@ Notes:
   Vercel they apply to each running instance.
 - `CRON_SECRET` (at least 16 random characters) enables the daily update of
   the store catalogue (see
-  [Store catalogue](#store-catalogue-ikea-updated-every-day)).
+  [Store catalogue](#store-catalogue-ikea-and-jysk-updated-every-day)).
 - Maintenance routes (`/api/admin/projects`: list projects, delete one with
   `?id=`) exist only while the `ADMIN_TOKEN` environment variable (at least 32
   characters) is set, and require `Authorization: Bearer <ADMIN_TOKEN>`;
@@ -383,30 +383,41 @@ applied uniformly by `src/catalog/filter.ts`.
 Prices are always shown with their update date and a warning that they may
 have changed. The retailers in the demo catalogue are fictitious.
 
-### Store catalogue (IKEA), updated every day
+### Store catalogue (IKEA and JYSK), updated every day
 
-The *Negozi* (Stores) source holds real IKEA Italy products: about 30 per
-furniture type (sofas, armchairs, TV units, bookcases, storage cabinets,
-coffee tables, rugs, plants, beds, wardrobes, chests of drawers, bedside
-tables, tables, chairs, stools, sideboards, desks, bathroom cabinets, shoe
-cabinets, mirrors, floor, pendant, wall and table lamps, appliances), about
-700 pages in all.
+The *Negozi* (Stores) source holds real products from two stores:
 
-- The repository only contains the list of product page addresses,
-  `src/catalog/store/ikea-links.json`, chosen from IKEA's public sitemaps by
-  `node scripts/store-links-ikea.mjs [products-per-type]`. The list is kept
-  stable: pages already chosen stay while they are still valid, and new ones
-  only replace those that disappeared; sets of several pieces (a table with
-  chairs) are left out. Names, prices, dimensions and photos are read from the
-  pages and stored in the database.
+- **IKEA Italy**: about 30 per furniture type (sofas, armchairs, TV units,
+  bookcases, storage cabinets, coffee tables, rugs, plants, beds, wardrobes,
+  chests of drawers, bedside tables, tables, chairs, stools, sideboards, desks,
+  bathroom cabinets, shoe cabinets, mirrors, floor, pendant, wall and table
+  lamps, appliances), about 700 pages;
+- **JYSK Italy**: about 15 per type (sofas, armchairs, coffee tables,
+  bookcases, rugs, plants, beds, wardrobes, chests of drawers, bedside tables,
+  tables, chairs, sideboards, desks, mirrors, lamps), about 225 pages.
+
+How it works:
+
+- The repository only contains the lists of product page addresses,
+  `src/catalog/store/<store>-links.json`, chosen from each store's public
+  sitemaps by `node scripts/store-links.mjs <ikea|jysk> [products-per-type]`.
+  A list is kept stable: pages already chosen stay while they are still valid,
+  and new ones only replace those that disappeared; spare parts, accessories,
+  textiles and sets of several pieces (a table with chairs) are left out.
+  Names, prices, dimensions and photos are read from the pages and stored in
+  the database.
 - `src/lib/server/storeSync.ts` re-reads the pages one at a time: robots.txt is
-  checked first (if it cannot be read, nothing is fetched), there is a pause of
-  2 seconds between requests, and the run stops early if the site answers 429
-  or 503. Each page is read again after 3 days (14 days when the page lacks
-  data, 30 when the product was withdrawn). A product whose page disappears
-  or now redirects to a category is removed from the catalogue.
+  checked first (if it cannot be read, nothing is fetched from that site), each
+  site gets at least 2 seconds between requests or the longer `Crawl-delay` it
+  asks for (sites asking for more than 30 seconds are skipped), and the run
+  stops early if a site answers 429 or 503. Each page is read again after
+  3 days (14 days when the page lacks data, 30 when the product was
+  withdrawn). A product whose page disappears or now redirects to a category
+  is removed from the catalogue.
 - Data come from the page's structured data (JSON-LD) and, when dimensions are
-  missing there, from the page's *Misure* (Measurements) section.
+  missing there, from the page's measurement tables: IKEA's *Misure* section
+  and JYSK's specification table (*Dimensioni da montato*; package dimensions
+  are ignored).
 - On Vercel, `vercel.json` schedules `/api/cron/store-sync` three times a day; each
   run reads up to 100 pages within the 5-minute function limit. The route is
   closed unless the `CRON_SECRET` environment variable is set: Vercel then
@@ -415,6 +426,16 @@ cabinets, mirrors, floor, pendant, wall and table lamps, appliances), about
   that could not be read with the reason); with `?riprova=1` it also re-reads
   at once the pages that lacked data, useful after improving the reader.
 - The static build has no server, so it has no store catalogue.
+
+Other Italian stores were checked (November 2026) and left out: Leroy Merlin
+answers 403 to automated requests, Maisons du Monde blocks its robots.txt,
+Kave Home answers 429 and Mondo Convenienza does not answer, Westwing's
+robots.txt disallows product pages, Conforama, Emmezeta and Calligaris do not
+list products in their sitemaps, and Poltronesofà publishes no prices in its
+pages. For stores like these, an affiliate feed (see
+[Feeds that update themselves](#feeds-that-update-themselves)) is the way in.
+IKEA's 3D models are served only to IKEA's own site (requests from other
+origins get 403), so they are not used.
 
 The **Configuratori IKEA** page (`/configuratori`) links to IKEA's own
 planners (kitchens, PAX and PLATSA wardrobes, BESTÅ, sofas, bathroom, office,

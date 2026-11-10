@@ -30,6 +30,9 @@ Disallow: /privato/
 
   it("Disallow: / blocca tutto", () => {
     expect(robotsAllows(parseRobots("User-agent: *\nDisallow: /"), "/qualsiasi")).toBe(false);
+    // Crawl-delay del gruppo che vale per noi; assente se non indicato.
+    expect(parseRobots("User-agent: *\nCrawl-delay: 5\nDisallow: /lib/").crawlDelay).toBe(5);
+    expect(parseRobots("User-agent: Googlebot\nCrawl-delay: 1\nUser-agent: *\nDisallow: /x").crawlDelay).toBeUndefined();
   });
 });
 

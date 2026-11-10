@@ -102,7 +102,7 @@ export function ShopPage() {
       <main className="mx-auto max-w-6xl px-5 pb-20 pt-6">
         <h1 className="text-[clamp(1.8rem,4vw,2.6rem)] font-semibold tracking-[-0.02em]">Vetrina</h1>
         <p className="mt-1 max-w-2xl text-sm text-graphite-soft">
-          Tutti i prodotti del catalogo: prodotti IKEA aggiornati ogni giorno, demo, cataloghi e feed importati, prodotti salvati da
+          Tutti i prodotti del catalogo: prodotti IKEA e JYSK aggiornati ogni giorno, demo, cataloghi e feed importati, prodotti salvati da
           link. Aggiungili al carrello per comprarli nei negozi, o usali nei progetti dal pannello Catalogo dell’editor.
         </p>
 

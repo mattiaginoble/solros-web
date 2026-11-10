@@ -248,13 +248,15 @@ export async function guardedGet(
 interface RobotsRules {
   allow: string[];
   disallow: string[];
+  /** Secondi da attendere fra due richieste (Crawl-delay), se indicati. */
+  crawlDelay?: number;
 }
 
 const robotsCache = new Map<string, { at: number; rules: RobotsRules }>();
 
 /** Regole per il nostro user agent (o per "*") da un robots.txt. */
 export function parseRobots(txt: string, agent = ROBOTS_AGENT): RobotsRules {
-  const groups: { agents: string[]; allow: string[]; disallow: string[] }[] = [];
+  const groups: { agents: string[]; allow: string[]; disallow: string[]; crawlDelay?: number }[] = [];
   let current: (typeof groups)[number] | null = null;
   let lastWasAgent = false;
   for (const rawLine of txt.split(/\r?\n/)) {
@@ -276,10 +278,16 @@ export function parseRobots(txt: string, agent = ROBOTS_AGENT): RobotsRules {
     if (!current) continue;
     if (key === "allow" && value) current.allow.push(value);
     if (key === "disallow" && value) current.disallow.push(value);
+    if (key === "crawl-delay" && Number.isFinite(Number(value)) && Number(value) >= 0) current.crawlDelay = Number(value);
   }
   const specific = groups.filter((g) => g.agents.some((a) => a !== "*" && agent.includes(a)));
   const chosen = specific.length ? specific : groups.filter((g) => g.agents.includes("*"));
-  return { allow: chosen.flatMap((g) => g.allow), disallow: chosen.flatMap((g) => g.disallow) };
+  const delays = chosen.map((g) => g.crawlDelay).filter((d): d is number => d !== undefined);
+  return {
+    allow: chosen.flatMap((g) => g.allow),
+    disallow: chosen.flatMap((g) => g.disallow),
+    ...(delays.length ? { crawlDelay: Math.max(...delays) } : {}),
+  };
 }
 
 function ruleMatches(rule: string, path: string) {

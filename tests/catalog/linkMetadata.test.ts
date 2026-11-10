@@ -156,6 +156,19 @@ describe("metadati da link prodotto", () => {
     });
   });
 
+  it("legge le misure dalle tabelle di caratteristiche (JYSK), non quelle del pacco", () => {
+    const row = (th: string, td: string) => `<tr data-testid="specifications-row"><th scope="row" class="font-normal">${th}</th><td class="py-6"><span>${td}</span></td></tr>`;
+    const page = (name: string, rows: string) => ikeaLike({ name, offers: { price: "235", priceCurrency: "EUR" } }).replace("</html>", `<body><table>${rows}</table></body></html>`);
+    const url = "https://jysk.it/soggiorno/divani/divano-gedved-2-posti-grigio-chiaro";
+    const sofa = extractProductMetadata(
+      page("Divano GEDVED 2 posti grigio chiaro", row("Dimensioni non montato", "Larghezza 84 cm, Lunghezza 152 cm, Altezza 38 cm") + row("Dimensioni da montato", "Larghezza 154 cm, Altezza 85 cm, Profondità 84 cm")),
+      url,
+    );
+    expect(sofa).toMatchObject({ shape: "sofa", width: 154, depth: 84, height: 85, price: 235 });
+    const bed = extractProductMetadata(page("Struttura letto KALU 140x200 bianco", row("Dimensioni da montato", "Larghezza 145 cm; Lunghezza 205 cm; Altezza 90 cm")), url);
+    expect(bed).toMatchObject({ shape: "bed", width: 145, depth: 205, height: 90 });
+  });
+
   it("dà ai tappeti senza spessore un'altezza di 1 cm", () => {
     const rug = extractProductMetadata(ikeaLike({ name: "STOENSE Tappeto pelo corto - beige 133x195 cm", offers: { price: "49" } }), "https://www.ikea.com/it/it/p/stoense-1/");
     expect(rug).toMatchObject({ shape: "rug", width: 133, depth: 195, height: 1 });

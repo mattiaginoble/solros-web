@@ -27,6 +27,8 @@ const RECHECK_MS: Record<string, number> = {
   removed: 30 * DAY,
 };
 const PAGE_BYTES = 4 * 1024 * 1024;
+/** Crawl-delay oltre questo valore non viene seguito: il sito viene saltato. */
+const MAX_CRAWL_DELAY_S = 30;
 
 export interface FetchedPage {
   status: number;
@@ -170,7 +172,8 @@ export async function syncStorePages(opts: SyncOptions = {}): Promise<SyncReport
   const due = rows.filter((r) => isDue(r, now().getTime())).sort((a, b) => (a.lastCheckedAt?.getTime() ?? 0) - (b.lastCheckedAt?.getTime() ?? 0));
   const report: SyncReport = { checked: 0, updated: 0, incomplete: 0, removed: 0, errors: 0, remaining: due.length, products: 0 };
   const robots = new Map<string, ReturnType<typeof parseRobots> | null>();
-  let lastRequest = 0;
+  // Ultima richiesta per sito: la pausa vale per ciascun negozio.
+  const lastRequest = new Map<string, number>();
 
   const save = (url: string, data: { status: string; note?: string | null; productId?: string | null }) =>
     prisma.storePage.update({ where: { url }, data: { ...data, note: data.note?.slice(0, 300) ?? null } });
@@ -195,6 +198,10 @@ export async function syncStorePages(opts: SyncOptions = {}): Promise<SyncReport
       report.stoppedBy = `robots.txt di ${url.hostname} non leggibile: nessuna pagina letta`;
       continue;
     }
+    if ((rules.crawlDelay ?? 0) > MAX_CRAWL_DELAY_S) {
+      report.stoppedBy = `${url.hostname} chiede più di ${MAX_CRAWL_DELAY_S} secondi fra due richieste: sito saltato`;
+      continue;
+    }
     // Una sola esecuzione per pagina anche con richieste contemporanee.
     const at = now();
     const claim = await prisma.storePage.updateMany({ where: { url: row.url, lastCheckedAt: row.lastCheckedAt }, data: { lastCheckedAt: at } });
@@ -209,9 +216,11 @@ export async function syncStorePages(opts: SyncOptions = {}): Promise<SyncReport
       continue;
     }
 
-    const wait = lastRequest + delay - Date.now();
-    if (lastRequest && wait > 0) await sleep(wait);
-    lastRequest = Date.now();
+    const gap = Math.max(delay, (rules.crawlDelay ?? 0) * 1000);
+    const last = lastRequest.get(url.origin);
+    const wait = last === undefined ? 0 : last + gap - Date.now();
+    if (wait > 0) await sleep(wait);
+    lastRequest.set(url.origin, Date.now());
     let page: FetchedPage;
     try {
       page = await getPage(row.url);
