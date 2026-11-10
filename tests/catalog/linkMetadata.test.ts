@@ -167,6 +167,13 @@ describe("metadati da link prodotto", () => {
     expect(sofa).toMatchObject({ shape: "sofa", width: 154, depth: 84, height: 85, price: 235 });
     const bed = extractProductMetadata(page("Struttura letto KALU 140x200 bianco", row("Dimensioni da montato", "Larghezza 145 cm; Lunghezza 205 cm; Altezza 90 cm")), url);
     expect(bed).toMatchObject({ shape: "bed", width: 145, depth: 205, height: 90 });
+    // Intervalli: tavolo allungabile chiuso, chaise longue e sedia regolabile al massimo.
+    const table = page("Tavolo da pranzo KORSKRO 100x200/326 cm", row("Dimensioni da montato", "Larghezza 100 cm, Lunghezza 200/326 cm, Altezza 75 cm") + row("Dimensioni variabili", "200/242/284/326 cm"));
+    expect(extractProductMetadata(table, url)).toMatchObject({ shape: "table", width: 200, depth: 100, height: 75 });
+    const chaise = page("Divano FALSLEV con chaise longue", row("Dimensioni da montato", "Larghezza 216 cm, Altezza 78 cm, Profondità 83/149 cm"));
+    expect(extractProductMetadata(chaise, url)).toMatchObject({ width: 216, depth: 149, height: 78 });
+    const chair = page("Sedia da scrivania ROSTRUP nero", row("Dimensioni da montato", "Larghezza 57 cm, Altezza 87-93 cm, Profondità 57 cm"));
+    expect(extractProductMetadata(chair, url)).toMatchObject({ shape: "chair", width: 57, depth: 57, height: 93 });
   });
 
   it("dà ai tappeti senza spessore un'altezza di 1 cm", () => {

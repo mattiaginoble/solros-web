@@ -120,14 +120,17 @@ const SPEC_ROW = /<th\b[^>]*>([^<]{1,80})<\/th>\s*<td\b[^>]*>([\s\S]{1,400}?)<\/
  * caratteristiche con le misure in una riga (JYSK: «Dimensioni da montato |
  * Larghezza 154 cm, Altezza 85 cm, Profondità 84 cm»). Misure del pacco escluse.
  */
-function measurePairs(html: string): { label: string; cm: number }[] {
-  const pairs: { label: string; cm: number }[] = [];
+function measurePairs(html: string): { label: string; min: number; max: number }[] {
+  const pairs: { label: string; min: number; max: number }[] = [];
   const add = (rawLabel: string, rawValue: string) => {
     const label = normalizeText(decodeEntities(rawLabel)).replace(/[:\s]+$/, "").trim();
-    const value = /^(\d+(?:[.,]\d+)?)\s*(mm|cm|m)\b/i.exec(decodeEntities(rawValue).trim());
+    // Anche intervalli: «200/326 cm» (tavolo allungabile), «87-93 cm» (sedia regolabile).
+    const value = /^(\d+(?:[.,]\d+)?(?:\s*[-/–]\s*\d+(?:[.,]\d+)?)*)\s*(mm|cm|m)\b/i.exec(decodeEntities(rawValue).trim());
     if (!value) return;
-    const cm = Math.round(Number(value[1].replace(",", ".")) * unitToCm(value[2].toLowerCase()) * 10) / 10;
-    if (cm > 0) pairs.push({ label, cm });
+    const k = unitToCm(value[2].toLowerCase());
+    const nums = value[1].split(/\s*[-/–]\s*/).map((n) => Math.round(Number(n.replace(",", ".")) * k * 10) / 10);
+    const min = Math.min(...nums);
+    if (min > 0) pairs.push({ label, min, max: Math.max(...nums) });
   };
   for (const m of html.matchAll(MEASURE_LABEL)) {
     const cls = m[2].toLowerCase();
@@ -138,7 +141,7 @@ function measurePairs(html: string): { label: string; cm: number }[] {
     if (!/dimension|misur/.test(head) || /non montat|imball|confezion|pacco|package|scatola/.test(head)) continue;
     const text = decodeEntities(m[2].replace(/<[^>]+>/g, " "));
     for (const part of text.split(/[,;]/)) {
-      const pm = /^\s*([^\d,;]{2,40}?)\s*:?\s*(\d+(?:[.,]\d+)?\s*(?:mm|cm|m))\b/i.exec(part);
+      const pm = /^\s*([^\d,;]{2,40}?)\s*:?\s*(\d+(?:[.,]\d+)?(?:\s*[-/–]\s*\d+(?:[.,]\d+)?)*\s*(?:mm|cm|m))\b/i.exec(part);
       if (pm) add(pm[1], pm[2]);
     }
   }
@@ -160,7 +163,9 @@ export function measurementList(
   const largest: Record<string, number> = {};
   const sides: { right?: number; left?: number } = {};
   const seat: { diameter?: number; height?: number } = {};
-  for (const { label, cm } of measurePairs(html)) {
+  for (const { label, min, max } of measurePairs(html)) {
+    // Intervalli: per i tavoli la misura chiusa, per il resto l'ingombro massimo (chaise longue, schienale alzato).
+    const cm = shape === "table" ? min : max;
     const key = MEASURE_KEYS[label];
     if (key) values[key] ??= cm;
     // «Altezza, inclusi cuscini schienale», «Profondità minima»: solo se manca l'etichetta semplice.
