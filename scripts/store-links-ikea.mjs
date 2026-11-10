@@ -4,7 +4,7 @@
 //   node scripts/store-links-ikea.mjs [prodotti-per-categoria] [sitemap.xml ...]
 //
 // Senza file scarica le mappe prod-it-IT_*.xml indicate dall'indice del sito.
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
 const UA = "ConfiguratoreCasa/1.0 (scelta dei prodotti per un catalogo personale)";
 const INDEX = "https://www.ikea.com/sitemaps/sitemap.xml";
@@ -12,6 +12,9 @@ const OUT = new URL("../src/catalog/store/ikea-links.json", import.meta.url);
 
 const EXCLUDE =
   /fodera|rivestiment|copri|cuscin|gamba|gambe|piedi|piede|ricamb|-anta-|^anta-|ante-per|cassetto-per|ripiano|maniglia|pomello|cerniera|inserto|accessori|federa|lenzuol|piumino|biancheria|doghe|materasso|testiera|struttura-per-cassetti|zoccolo|copertura|protezione|organizer|scatola|contenitore-per|tenda|paralume|lampadina|kit-|vite|staffa|binario|telaio-per|pannello-|bracciolo|schienale|seduta-per|mensola-per|piano-per|tovaglia|runner|tappetino|bambini|neonat|giocattol|cane|gatto|regalo|buono/;
+
+/** Set di più mobili (tavolo con sedie, scrivania con sedia): nessuna misura d'ingombro unica. */
+const SETS = /(tavolo|scrivania)\b.*(\d+-?sedi[ae]|-e-sedi[ae]|sgabell)/;
 
 /** [stanza, sottocategoria, schema dell'indirizzo]. */
 const CATEGORIES = [
@@ -56,17 +59,27 @@ if (files.length) {
 }
 urls = [...new Set(urls.filter((u) => u.startsWith("https://www.ikea.com/it/it/p/")))].sort();
 
+// Elenco stabile: restano le pagine già scelte che vanno ancora bene, le nuove
+// servono solo a sostituire quelle uscite (così i prodotti già letti non cambiano).
+const previous = existsSync(OUT) ? JSON.parse(readFileSync(OUT, "utf8")) : [];
 const out = [];
 const seen = new Set();
 for (const [category, subcategory, pattern] of CATEGORIES) {
   const found = urls.filter((u) => {
     const slug = u.split("/p/")[1].replace(/\/$/, "");
-    return pattern.test(slug) && !EXCLUDE.test(slug);
+    return pattern.test(slug) && !EXCLUDE.test(slug) && !SETS.test(slug);
   });
+  const valid = new Set(found);
+  const kept = previous.filter((p) => p.subcategory === subcategory && valid.has(p.url)).map((p) => p.url).slice(0, perCategory);
   // Prodotti distribuiti lungo l'elenco, non solo i primi in ordine alfabetico.
   const step = Math.max(1, Math.floor(found.length / perCategory));
-  const chosen = found.filter((_, i) => i % step === 0).slice(0, perCategory);
-  console.error(`${subcategory}: ${found.length} candidati, scelti ${chosen.length}`);
+  const spread = [...found.filter((_, i) => i % step === 0), ...found];
+  const chosen = [...kept];
+  for (const url of spread) {
+    if (chosen.length >= perCategory) break;
+    if (!chosen.includes(url)) chosen.push(url);
+  }
+  console.error(`${subcategory}: ${found.length} candidati, ${kept.length} confermati, ${chosen.length - kept.length} nuovi`);
   for (const url of chosen) {
     if (seen.has(url)) continue;
     seen.add(url);

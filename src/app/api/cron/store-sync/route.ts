@@ -8,7 +8,8 @@ export const maxDuration = 300;
 /**
  * Aggiornamento pianificato del catalogo «Negozi» (vercel.json → crons).
  * Vercel invia `Authorization: Bearer <CRON_SECRET>`; senza la variabile la route resta chiusa.
- * Con `?stato=1` restituisce solo il riepilogo, senza leggere pagine.
+ * Con `?stato=1` restituisce solo il riepilogo, senza leggere pagine; con
+ * `?riprova=1` rilegge subito anche le pagine che avevano dati incompleti.
  */
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
@@ -16,8 +17,9 @@ export async function GET(req: Request) {
     return Response.json({ error: "Non autorizzato" }, { status: 401 });
   }
   try {
-    if (new URL(req.url).searchParams.has("stato")) return Response.json(await storeSyncStatus());
-    return Response.json(await syncStorePages());
+    const params = new URL(req.url).searchParams;
+    if (params.has("stato")) return Response.json(await storeSyncStatus());
+    return Response.json(await syncStorePages({ retryIncomplete: params.has("riprova") }));
   } catch (err) {
     return handleError(err);
   }

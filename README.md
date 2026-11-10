@@ -392,8 +392,11 @@ sideboards, desks, bathroom cabinets, lamps, appliances).
 
 - The repository only contains the list of product page addresses,
   `src/catalog/store/ikea-links.json`, chosen from IKEA's public sitemaps by
-  `node scripts/store-links-ikea.mjs [products-per-type]`. Names, prices,
-  dimensions and photos are read from the pages and stored in the database.
+  `node scripts/store-links-ikea.mjs [products-per-type]`. The list is kept
+  stable: pages already chosen stay while they are still valid, and new ones
+  only replace those that disappeared; sets of several pieces (a table with
+  chairs) are left out. Names, prices, dimensions and photos are read from the
+  pages and stored in the database.
 - `src/lib/server/storeSync.ts` re-reads the pages one at a time: robots.txt is
   checked first (if it cannot be read, nothing is fetched), there is a pause of
   2 seconds between requests, and the run stops early if the site answers 429
@@ -406,7 +409,9 @@ sideboards, desks, bathroom cabinets, lamps, appliances).
   run reads up to 100 pages within the 5-minute function limit. The route is
   closed unless the `CRON_SECRET` environment variable is set: Vercel then
   sends it as `Authorization: Bearer <CRON_SECRET>`. With `?stato=1` the route
-  only returns a summary (pages by status, products, last read).
+  only returns a summary (pages by status, products, last read, and the pages
+  that could not be read with the reason); with `?riprova=1` it also re-reads
+  at once the pages that lacked data, useful after improving the reader.
 - The static build has no server, so it has no store catalogue.
 
 The **Configuratori IKEA** page (`/configuratori`) links to IKEA's own

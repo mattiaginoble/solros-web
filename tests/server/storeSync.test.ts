@@ -128,6 +128,19 @@ describe("catalogo Negozi", () => {
     expect(site.fetchPage).not.toHaveBeenCalled();
   });
 
+  it("con retryIncomplete rilegge subito le pagine incomplete", async () => {
+    const pages = [kivik, senzaMisure];
+    const html: Record<string, { html: string }> = { [senzaMisure.url]: { html: productPage("SÖDERHAMN Divano", 499, { width: "198 cm" }) } };
+    const site = fakeSite(html);
+    await syncStorePages({ pages, now, ...site });
+    expect(await page(senzaMisure.url)).toMatchObject({ status: "incomplete" });
+    // La pagina ora ha tutte le misure: senza retryIncomplete aspetta la scadenza, con l'opzione viene riletta.
+    html[senzaMisure.url] = { html: productPage("SÖDERHAMN Divano", 499) };
+    expect(await syncStorePages({ pages, now, ...site })).toMatchObject({ checked: 0 });
+    expect(await syncStorePages({ pages, now, retryIncomplete: true, ...site })).toMatchObject({ checked: 1, updated: 1 });
+    expect(await page(senzaMisure.url)).toMatchObject({ status: "ok" });
+  });
+
   it("toglie pagine e prodotti usciti dall'elenco", async () => {
     const site = fakeSite({});
     await syncStorePages({ pages: [ektorp], now, ...site });

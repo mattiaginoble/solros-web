@@ -141,7 +141,7 @@ export function measurementList(html: string, shape?: string): { width?: number;
     // Divani angolari: i due lati della L.
     if (/^larghezza (destra|lato destro)$/.test(label)) sides.right ??= cm;
     if (/^larghezza (sinistra|lato sinistro)$/.test(label)) sides.left ??= cm;
-    const prefixed = /^(larghezza|profondita|altezza)\b(.*)$/.exec(label);
+    const prefixed = /^(larghezza|profondita|altezza|diametro)\b(.*)$/.exec(label);
     if (prefixed && !/sedile|seduta|intern|materasso|bracciolo|spazio|minima|massima|pacco/.test(prefixed[2])) {
       const k = MEASURE_KEYS[prefixed[1]];
       largest[k] = Math.max(largest[k] ?? 0, cm);
@@ -163,9 +163,11 @@ export function measurementList(html: string, shape?: string): { width?: number;
       else [width, depth] = [Math.max(width, length), Math.min(width, length)];
     }
   }
-  if (diameter !== undefined) {
-    width ??= diameter;
-    depth ??= diameter;
+  // Lampade: «Diametro», oppure il più grande fra «Diametro base» e «Diametro paralume».
+  const round = diameter ?? largest.diameter;
+  if (round !== undefined) {
+    width ??= round;
+    depth ??= round;
   }
   // Letti: «Altezza testiera» è l'altezza d'ingombro quando manca quella semplice.
   width ??= largest.width;
@@ -286,6 +288,11 @@ export function extractProductMetadata(html: string, pageUrl: string): LinkMetad
   }
   // Tappeti senza spessore indicato: 1 cm, quanto basta per la pianta e il 3D.
   if (inferred.shape === "rug" && meta.width && meta.depth && !meta.height) set("height", 1, "tappeto (spessore stimato)");
+  // Lampade a sospensione: paralume tondo (profondità = larghezza) e altezza stimata se manca.
+  if (inferred.shape === "lamp-ceiling" && meta.width) {
+    set("depth", meta.width, "lampada (paralume tondo)");
+    set("height", 25, "lampada (altezza stimata)");
+  }
   // og:type "product" sì, "product.group" (pagine di categoria) no.
   const ogType = (metaContent(html, "og:type") ?? "").toLowerCase();
   meta.isProduct = !!product || ["product", "product.item", "og:product"].includes(ogType) || meta.price !== undefined;

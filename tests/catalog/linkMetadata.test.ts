@@ -104,6 +104,16 @@ describe("metadati da link prodotto", () => {
     expect(extractProductMetadata(html, "https://www.ikea.com/it/it/cat/billy-58288/").isProduct).toBe(false);
   });
 
+  it("lampade a sospensione: paralume tondo e altezza stimata solo se mancano", () => {
+    const row = (n: string, v: string) => `<span class="pipf-measurements-tab__measurement-name">${n}</span><span class="pipf-measurements-tab__measurement-value">${v}</span>`;
+    const page = (name: string, rows: string) => ikeaLike({ name, offers: { price: "29" } }).replace("</html>", `<body>${rows}</body></html>`);
+    const nymane = extractProductMetadata(page("NYMÅNE Lampada a sospensione - bianco", row("Diametro", "40 cm") + row("Lunghezza filo elettrico", "1.6 m")), "https://www.ikea.com/it/it/p/n-1/");
+    expect(nymane).toMatchObject({ shape: "lamp-ceiling", width: 40, depth: 40, height: 25 });
+    expect(nymane.found).toContain("height (lampada (altezza stimata))");
+    const ackja = extractProductMetadata(page("ACKJA Lampada a sospensione - nero", row("Altezza", "9 cm") + row("Altezza minima", "50 cm") + row("Larghezza", "60 cm")), "https://www.ikea.com/it/it/p/a-1/");
+    expect(ackja).toMatchObject({ width: 60, depth: 60, height: 9 });
+  });
+
   it("dà ai tappeti senza spessore un'altezza di 1 cm", () => {
     const rug = extractProductMetadata(ikeaLike({ name: "STOENSE Tappeto pelo corto - beige 133x195 cm", offers: { price: "49" } }), "https://www.ikea.com/it/it/p/stoense-1/");
     expect(rug).toMatchObject({ shape: "rug", width: 133, depth: 195, height: 1 });
@@ -184,6 +194,10 @@ describe("metadati da link prodotto", () => {
         "sofa",
       ),
     ).toEqual({ width: 249, depth: 209, height: 83 });
+    // Lampade da terra: diametro più grande fra base e paralume; la lunghezza del filo non conta.
+    expect(
+      measurementList(html([["Max.", "100 W"], ["Altezza", "155 cm"], ["Diametro base", "28 cm"], ["Diametro paralume", "36 cm"], ["Lunghezza filo elettrico", "204 cm"]]), "lamp-floor"),
+    ).toEqual({ width: 36, depth: 36, height: 155 });
     // Classi senza riferimenti alle misure: ignorate.
     expect(measurementList(`<span class="title">Larghezza</span><span>10 cm</span>`)).toEqual({ width: undefined, depth: undefined, height: undefined });
   });

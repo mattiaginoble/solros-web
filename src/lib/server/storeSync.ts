@@ -47,6 +47,8 @@ export interface SyncOptions {
   fetchPage?: (url: string) => Promise<FetchedPage>;
   /** Testo di robots.txt, "" se il sito non lo ha, null se non è leggibile. */
   fetchRobots?: (origin: string) => Promise<string | null>;
+  /** Rilegge subito le pagine con dati incompleti (dopo un miglioramento della lettura). */
+  retryIncomplete?: boolean;
 }
 
 export interface SyncReport {
@@ -160,7 +162,11 @@ export async function syncStorePages(opts: SyncOptions = {}): Promise<SyncReport
   const started = Date.now();
   const entries = new Map((opts.pages ?? STORE_PAGES).map((e) => [e.url, e]));
 
-  const rows = await reconcile([...entries.values()]);
+  let rows = await reconcile([...entries.values()]);
+  if (opts.retryIncomplete) {
+    const { count } = await prisma.storePage.updateMany({ where: { status: "incomplete" }, data: { lastCheckedAt: null } });
+    if (count) rows = await prisma.storePage.findMany();
+  }
   const due = rows.filter((r) => isDue(r, now().getTime())).sort((a, b) => (a.lastCheckedAt?.getTime() ?? 0) - (b.lastCheckedAt?.getTime() ?? 0));
   const report: SyncReport = { checked: 0, updated: 0, incomplete: 0, removed: 0, errors: 0, remaining: due.length, products: 0 };
   const robots = new Map<string, ReturnType<typeof parseRobots> | null>();
