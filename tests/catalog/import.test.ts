@@ -27,6 +27,14 @@ describe("normalizzazione", () => {
     expect(inferShape("Pensile cucina 60")).toEqual({ shape: "cabinet", mount: "wall" });
     expect(inferShape("Lampadario in vetro")).toEqual({ shape: "lamp-ceiling", mount: "ceiling" });
     expect(inferShape("Congelatore sottotavolo integrato").shape).toBe("fridge");
+    expect(inferShape("RANARP Lampada da parete/a pinza - nero")).toEqual({ shape: "lamp-wall", mount: "wall" });
+    expect(inferShape("RANARP Lampada da tavolo - bianco sporco")).toEqual({ shape: "lamp-floor", mount: "floor" });
+    expect(inferShape("HEMNES Scarpiera a 2 scomparti - bianco").shape).toBe("cabinet");
+    expect(inferShape("FEJKA Pianta artificiale in vaso").shape).toBe("plant");
+    expect(inferShape("Pianta in vaso grande").shape).toBe("plant");
+    expect(inferShape("Vaso sospeso con sedile").shape).toBe("toilet");
+    expect(inferShape("FORSÅ Lampada da scrivania - nero").shape).toBe("lamp-floor");
+    expect(inferShape("KALLAX Mobile con ante - bianco").shape).toBe("cabinet");
     expect(inferShape("Tavolino da caffè").shape).toBe("table");
     expect(inferShape("Tavolo allungabile").shape).toBe("table");
   });

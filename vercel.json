@@ -2,7 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["fra1"],
   "crons": [
-    { "path": "/api/cron/store-sync?turno=mattina", "schedule": "17 4 * * *" },
-    { "path": "/api/cron/store-sync?turno=sera", "schedule": "47 16 * * *" }
+    { "path": "/api/cron/store-sync?turno=notte", "schedule": "17 4 * * *" },
+    { "path": "/api/cron/store-sync?turno=giorno", "schedule": "37 11 * * *" },
+    { "path": "/api/cron/store-sync?turno=sera", "schedule": "47 19 * * *" }
   ]
 }

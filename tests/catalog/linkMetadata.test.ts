@@ -114,6 +114,25 @@ describe("metadati da link prodotto", () => {
     expect(ackja).toMatchObject({ width: 60, depth: 60, height: 9 });
   });
 
+  it("specchi tondi, applique e piante da parete con una misura mancante", () => {
+    const row = (n: string, v: string) => `<span class="pipf-measurements-tab__measurement-name">${n}</span><span class="pipf-measurements-tab__measurement-value">${v}</span>`;
+    const page = (name: string, rows: string) => ikeaLike({ name, offers: { price: "19" } }).replace("</html>", `<body>${rows}</body></html>`);
+    const url = "https://www.ikea.com/it/it/p/x-1/";
+    expect(extractProductMetadata(page("BLASER Specchio", row("Diametro", "38 cm")), url)).toMatchObject({ shape: "mirror", width: 38, height: 38, depth: 3 });
+    expect(extractProductMetadata(page("ARSTID Lampada da parete - nichelato", row("Profondità", "38 cm") + row("Diametro paralume", "16 cm")), url)).toMatchObject({
+      shape: "lamp-wall",
+      width: 16,
+      depth: 38,
+      height: 16,
+    });
+    expect(extractProductMetadata(page("FEJKA Pianta artificiale da parete", row("Altezza", "25 cm") + row("Larghezza", "25 cm")), url)).toMatchObject({
+      shape: "plant",
+      width: 25,
+      depth: 25,
+      height: 25,
+    });
+  });
+
   it("dà ai tappeti senza spessore un'altezza di 1 cm", () => {
     const rug = extractProductMetadata(ikeaLike({ name: "STOENSE Tappeto pelo corto - beige 133x195 cm", offers: { price: "49" } }), "https://www.ikea.com/it/it/p/stoense-1/");
     expect(rug).toMatchObject({ shape: "rug", width: 133, depth: 195, height: 1 });

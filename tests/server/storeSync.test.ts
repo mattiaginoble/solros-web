@@ -86,7 +86,7 @@ describe("catalogo Negozi", () => {
     expect(await page(vietato.url)).toMatchObject({ status: "robots" });
   });
 
-  it("non rilegge prima della scadenza; dopo due giorni aggiorna prezzi e toglie i prodotti spariti", async () => {
+  it("non rilegge prima della scadenza; dopo tre giorni aggiorna prezzi e toglie i prodotti spariti", async () => {
     const site = fakeSite({
       [kivik.url]: { html: productPage("KIVIK Divano a 2 posti - beige", 279) },
       [ektorp.url]: { html: categoryPage, url: "https://www.ikea.com/it/it/cat/divani-fu003/" },
@@ -95,11 +95,11 @@ describe("catalogo Negozi", () => {
     expect(await syncStorePages({ pages: [kivik, ektorp, senzaMisure, sparito, vietato], now, ...site })).toMatchObject({ checked: 0 });
     expect(site.fetchPage).not.toHaveBeenCalled();
 
-    clock = new Date("2026-11-12T05:00:00Z");
+    clock = new Date("2026-11-13T05:00:00Z");
     const report = await syncStorePages({ pages: [kivik, ektorp, senzaMisure, sparito, vietato], now, ...site });
     expect(report).toMatchObject({ checked: 2, updated: 1, removed: 1, products: 1 });
     const [p] = await storeProducts();
-    expect([p.name, p.price, p.priceUpdatedAt.toISOString()]).toEqual(["KIVIK Divano a 2 posti - beige", 279, "2026-11-12T05:00:00.000Z"]);
+    expect([p.name, p.price, p.priceUpdatedAt.toISOString()]).toEqual(["KIVIK Divano a 2 posti - beige", 279, "2026-11-13T05:00:00.000Z"]);
     expect(await page(ektorp.url)).toMatchObject({ status: "removed", productId: null });
   });
 

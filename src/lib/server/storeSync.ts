@@ -20,7 +20,7 @@ const DAY = 86_400_000;
 /** Dopo quanto si rilegge una pagina, secondo l'esito dell'ultima lettura. */
 const RECHECK_MS: Record<string, number> = {
   pending: 0,
-  ok: 2 * DAY,
+  ok: 3 * DAY,
   error: DAY,
   robots: 7 * DAY,
   incomplete: 14 * DAY,

@@ -34,6 +34,13 @@ const CATEGORIES = [
   ["Ufficio", "Scrivanie", /^[a-z0-9]+-scrivania/],
   ["Bagno", "Mobili bagno", /^[a-z0-9]+-(mobile-per-lavabo|mobile-lavabo|colonna)/],
   ["Illuminazione", "Lampade", /^[a-z0-9]+-(lampada-da-terra|lampada-a-sospensione|plafoniera)/],
+  ["Illuminazione", "Applique", /^[a-z0-9]+-(applique|lampada-da-parete|faretto-da-parete|faretto-led-da-parete)/],
+  ["Illuminazione", "Lampade da tavolo", /^[a-z0-9]+-lampada-da-tavolo/],
+  ["Soggiorno", "Contenitori", /^[a-z0-9]+-(mobile-con-ante|mobile-con-cassetti|mobile-contenitore|combinazione-contenitori)/],
+  ["Soggiorno", "Piante", /^[a-z0-9]+-pianta-(artificiale|in-vaso)/],
+  ["Sala da pranzo", "Sgabelli", /^[a-z0-9]+-sgabello/],
+  ["Ingresso", "Scarpiere", /^[a-z0-9]+-scarpiera/],
+  ["Ingresso", "Specchi", /^[a-z0-9]+-specchio/],
   ["Elettrodomestici", "Elettrodomestici", /^[a-z0-9]+-(frigorifero|frigo-congelatore|lavastoviglie|forno|piano-cottura|cappa|lavatrice)/],
 ];
 
@@ -46,7 +53,7 @@ async function get(url) {
 }
 
 const [perArg, ...files] = process.argv.slice(2);
-const perCategory = Number(perArg) || 20;
+const perCategory = Number(perArg) || 30;
 let urls = [];
 if (files.length) {
   for (const f of files) urls.push(...locs(readFileSync(f, "utf8")));

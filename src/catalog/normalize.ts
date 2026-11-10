@@ -73,6 +73,8 @@ export function parseDimensions(text: string): { width?: number; depth?: number;
 }
 
 const SHAPE_RULES: [RegExp, Shape, MountType?][] = [
+  // Prima di tavoli e scrivanie: «lampada da tavolo» è una lampada.
+  [/lampada da (?:tavolo|scrivania|comodino|lettura)|table lamp|desk lamp/, "lamp-floor"],
   [/divano|sofa/, "sofa"],
   [/poltron|armchair/, "armchair"],
   [/\bletto|\bbed\b|materasso/, "bed"],
@@ -85,7 +87,7 @@ const SHAPE_RULES: [RegExp, Shape, MountType?][] = [
   [/comodino|nightstand|bedside/, "nightstand"],
   [/mobile tv|porta tv|tv unit|tv bench/, "tv-unit"],
   [/pensile/, "cabinet", "wall"],
-  [/cassettiera|madia|credenza|mobile|cabinet|dresser|sideboard/, "cabinet"],
+  [/cassettiera|scarpiera|madia|credenza|mobile|cabinet|dresser|sideboard/, "cabinet"],
   [/frigo|fridge|refrigerat|congelator|freezer/, "fridge"],
   [/lavastoviglie|dishwasher/, "dishwasher"],
   [/lavatrice|asciugatrice|washer|dryer/, "washer"],
@@ -94,13 +96,14 @@ const SHAPE_RULES: [RegExp, Shape, MountType?][] = [
   [/cappa|hood/, "hood", "wall"],
   [/lavello|sink/, "sink"],
   [/lavabo|lavandino|washbasin|basin/, "washbasin"],
-  [/\bwc\b|vaso|toilet/, "toilet"],
+  // «Vaso» da solo è anche il vaso delle piante.
+  [/\bwc\b|vaso (?:sanitario|wc|sospeso|a terra|a pavimento)|toilet/, "toilet"],
   [/bidet/, "bidet"],
   [/doccia|shower/, "shower"],
   [/vasca|bathtub|bath tub/, "bathtub"],
   [/specchio|mirror/, "mirror", "wall"],
-  [/applique|wall lamp|wall light/, "lamp-wall", "wall"],
-  [/lampadario|plafoniera|sospensione|pendant|ceiling/, "lamp-ceiling", "ceiling"],
+  [/applique|lampada da parete|faretto (?:led )?da parete|wall lamp|wall light/, "lamp-wall", "wall"],
+  [/lampadario|plafoniera|sospensione|faretto da soffitto|pendant|ceiling/, "lamp-ceiling", "ceiling"],
   [/lampada|lamp/, "lamp-floor"],
   [/tappeto|rug|carpet/, "rug"],
   [/pianta|plant/, "plant"],

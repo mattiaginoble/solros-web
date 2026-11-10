@@ -385,10 +385,12 @@ have changed. The retailers in the demo catalogue are fictitious.
 
 ### Store catalogue (IKEA), updated every day
 
-The *Negozi* (Stores) source holds real IKEA Italy products: about 20 per
-furniture type (sofas, armchairs, TV units, bookcases, coffee tables, rugs,
-beds, wardrobes, chests of drawers, bedside tables, tables, chairs,
-sideboards, desks, bathroom cabinets, lamps, appliances).
+The *Negozi* (Stores) source holds real IKEA Italy products: about 30 per
+furniture type (sofas, armchairs, TV units, bookcases, storage cabinets,
+coffee tables, rugs, plants, beds, wardrobes, chests of drawers, bedside
+tables, tables, chairs, stools, sideboards, desks, bathroom cabinets, shoe
+cabinets, mirrors, floor, pendant, wall and table lamps, appliances), about
+700 pages in all.
 
 - The repository only contains the list of product page addresses,
   `src/catalog/store/ikea-links.json`, chosen from IKEA's public sitemaps by
@@ -400,12 +402,12 @@ sideboards, desks, bathroom cabinets, lamps, appliances).
 - `src/lib/server/storeSync.ts` re-reads the pages one at a time: robots.txt is
   checked first (if it cannot be read, nothing is fetched), there is a pause of
   2 seconds between requests, and the run stops early if the site answers 429
-  or 503. Each page is read again after 2 days (14 days when the page lacks
+  or 503. Each page is read again after 3 days (14 days when the page lacks
   data, 30 when the product was withdrawn). A product whose page disappears
   or now redirects to a category is removed from the catalogue.
 - Data come from the page's structured data (JSON-LD) and, when dimensions are
   missing there, from the page's *Misure* (Measurements) section.
-- On Vercel, `vercel.json` schedules `/api/cron/store-sync` twice a day; each
+- On Vercel, `vercel.json` schedules `/api/cron/store-sync` three times a day; each
   run reads up to 100 pages within the 5-minute function limit. The route is
   closed unless the `CRON_SECRET` environment variable is set: Vercel then
   sends it as `Authorization: Bearer <CRON_SECRET>`. With `?stato=1` the route
